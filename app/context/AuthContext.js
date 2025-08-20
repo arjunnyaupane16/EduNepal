@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { getSupabase } from '../services/supabaseClient';
 
@@ -21,7 +22,21 @@ export const AuthProvider = ({ children }) => {
   // Fields that must remain immutable unless a special verification flow is used
   const IMMUTABLE_FIELDS = ['username', 'email'];
 
-  const SERVER_URL = Constants?.expoConfig?.extra?.serverUrl ?? 'http://localhost:4000';
+  // Resolve backend URL. On physical devices, "localhost" points to the phone.
+  // Replace with Expo host IP when available so device can reach the dev server.
+  let SERVER_URL = Constants?.expoConfig?.extra?.serverUrl ?? 'http://localhost:4000';
+  try {
+    const raw = String(SERVER_URL || '');
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)/i.test(raw)) {
+      const hostUri = Constants?.expoConfig?.hostUri; // e.g. "192.168.1.10:19000"
+      if (hostUri) {
+        const ip = hostUri.split(':')[0];
+        const portMatch = raw.match(/:(\d+)/);
+        const port = portMatch ? portMatch[1] : '4000';
+        SERVER_URL = `http://${ip}:${port}`;
+      }
+    }
+  } catch {}
   const supabase = getSupabase();
   const ENABLE_ADMIN_BOOTSTRAP = Constants?.expoConfig?.extra?.enableAdminBootstrap === true;
   // Prefer bucket from app config, fallback to a sensible default
@@ -54,11 +69,11 @@ export const AuthProvider = ({ children }) => {
       const { data: updated, error } = isLikelyUuid(targetId)
         ? await supabaseUpdateWithPrune(targetId, { username: newUsername })
         : await supabase
-            .from('users')
-            .update({ username: newUsername })
-            .or([user?.email ? `email.eq.${user.email}` : null, user?.username ? `username.eq.${user.username}` : null].filter(Boolean).join(','))
-            .select('*')
-            .single();
+          .from('users')
+          .update({ username: newUsername })
+          .or([user?.email ? `email.eq.${user.email}` : null, user?.username ? `username.eq.${user.username}` : null].filter(Boolean).join(','))
+          .select('*')
+          .single();
       if (error) return { success: false, message: error?.message || 'Failed to update username' };
       const mapped = fromDbUser(updated);
       setUser(mapped);
@@ -66,7 +81,7 @@ export const AuthProvider = ({ children }) => {
         const without = list.filter(u => u.id !== mapped.id);
         return [...without, mapped];
       });
-      try { await saveUserProfileJsonToStorage(mapped); } catch {}
+      try { await saveUserProfileJsonToStorage(mapped); } catch { }
       return { success: true };
     } catch (e) {
       return { success: false, message: 'Unexpected error updating username' };
@@ -127,7 +142,7 @@ export const AuthProvider = ({ children }) => {
         const without = list.filter(u => u.id !== mapped.id);
         return [...without, mapped];
       });
-      try { await saveUserProfileJsonToStorage(mapped); } catch {}
+      try { await saveUserProfileJsonToStorage(mapped); } catch { }
       return { success: true };
     } catch (e) {
       return { success: false, message: 'Unexpected error changing password' };
@@ -152,11 +167,11 @@ export const AuthProvider = ({ children }) => {
       const { data: updated, error } = isLikelyUuid(targetId)
         ? await supabaseUpdateWithPrune(targetId, { email: newEmail })
         : await supabase
-            .from('users')
-            .update({ email: newEmail })
-            .or([user?.email ? `email.eq.${user.email}` : null, user?.username ? `username.eq.${user.username}` : null].filter(Boolean).join(','))
-            .select('*')
-            .single();
+          .from('users')
+          .update({ email: newEmail })
+          .or([user?.email ? `email.eq.${user.email}` : null, user?.username ? `username.eq.${user.username}` : null].filter(Boolean).join(','))
+          .select('*')
+          .single();
       if (error) return { success: false, message: error?.message || 'Failed to update email' };
       const mapped = fromDbUser(updated);
       setUser(mapped);
@@ -168,9 +183,9 @@ export const AuthProvider = ({ children }) => {
       if (mapped?.email) {
         fetch(`${SERVER_URL}/register-email`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: mapped.email })
-        }).catch(() => {});
+        }).catch(() => { });
       }
-      try { await saveUserProfileJsonToStorage(mapped); } catch {}
+      try { await saveUserProfileJsonToStorage(mapped); } catch { }
       return { success: true };
     } catch (e) {
       return { success: false, message: 'Unexpected error changing email' };
@@ -200,7 +215,7 @@ export const AuthProvider = ({ children }) => {
         } else if (user?.email) {
           await supabase.from('users').delete().eq('email', user.email);
         }
-      } catch {}
+      } catch { }
       logout();
       return { success: true };
     } catch (e) {
@@ -234,9 +249,9 @@ export const AuthProvider = ({ children }) => {
             await supabase.storage.from(STORAGE_BUCKET).remove(toRemove);
           }
         }
-      } catch {}
+      } catch { }
       // 3) Persist latest profile JSON snapshot (optional)
-      try { await saveUserProfileJsonToStorage(resp.user || user); } catch {}
+      try { await saveUserProfileJsonToStorage(resp.user || user); } catch { }
       return { success: true };
     } catch (e) {
       console.warn('deleteProfileImage exception:', e?.message || e);
@@ -784,7 +799,7 @@ export const AuthProvider = ({ children }) => {
             }).catch(() => { });
           }
           // Persist profile JSON to Storage under users/{id}/profile.json
-          try { await saveUserProfileJsonToStorage(mapped); } catch {}
+          try { await saveUserProfileJsonToStorage(mapped); } catch { }
           return { success: true, user: mapped };
         }
       } catch (e) {
@@ -854,7 +869,7 @@ export const AuthProvider = ({ children }) => {
             return [...without, mapped];
           });
           // Best-effort: persist latest profile JSON to Storage
-          try { await saveUserProfileJsonToStorage(mapped); } catch {}
+          try { await saveUserProfileJsonToStorage(mapped); } catch { }
           return { success: true, user: mapped };
         }
         // If 0 rows matched, try to repair by refetching authoritative row via unique keys
@@ -903,13 +918,13 @@ export const AuthProvider = ({ children }) => {
                       [STORAGE_KEYS.userId, String(mapped.id)],
                       [STORAGE_KEYS.userSnapshot, JSON.stringify(mapped)],
                     ]);
-                  } catch {}
-                  try { await saveUserProfileJsonToStorage(mapped); } catch {}
+                  } catch { }
+                  try { await saveUserProfileJsonToStorage(mapped); } catch { }
                   return { success: true, user: mapped };
                 }
               }
             }
-          } catch {}
+          } catch { }
         }
         // Do not fallback to local state; enforce DB as source of truth
         console.warn('Supabase update self user error (no local fallback):', error);
@@ -947,8 +962,8 @@ export const AuthProvider = ({ children }) => {
                 [STORAGE_KEYS.userId, String(mapped.id || '')],
                 [STORAGE_KEYS.userSnapshot, JSON.stringify(mapped)],
               ]);
-            } catch {}
-            try { await saveUserProfileJsonToStorage(mapped); } catch {}
+            } catch { }
+            try { await saveUserProfileJsonToStorage(mapped); } catch { }
             return { success: true, user: mapped };
           }
           // If update failed, try to fetch authoritative row and then retry with its id
@@ -972,8 +987,8 @@ export const AuthProvider = ({ children }) => {
                   [STORAGE_KEYS.userId, String(mapped.id)],
                   [STORAGE_KEYS.userSnapshot, JSON.stringify(mapped)],
                 ]);
-              } catch {}
-              try { await saveUserProfileJsonToStorage(mapped); } catch {}
+              } catch { }
+              try { await saveUserProfileJsonToStorage(mapped); } catch { }
               return { success: true, user: mapped };
             }
           }
@@ -1042,7 +1057,7 @@ export const AuthProvider = ({ children }) => {
             setUser(mapped);
           }
           // Best-effort: persist latest profile JSON to Storage for the target user
-          try { await saveUserProfileJsonToStorage(mapped); } catch {}
+          try { await saveUserProfileJsonToStorage(mapped); } catch { }
           return { success: true, user: mapped };
         }
         // Graceful fallback to local state when target row not in DB or schema mismatch
@@ -1120,19 +1135,45 @@ export const AuthProvider = ({ children }) => {
   const uploadProfileImage = async (localUri) => {
     try {
       if (!supabase || !user?.id) return { success: false, error: 'Supabase unavailable or no user' };
-      // Fetch file data (Expo ImagePicker returns file:// URIs)
-      const res = await fetch(localUri);
+      // Fetch file data (Expo ImagePicker returns file:// or content:// URIs)
+      let res = await fetch(localUri);
       if (!res.ok) {
-        return { success: false, error: `Unable to read selected file (${res.status})` };
+        try { console.warn('[uploadProfileImage] initial fetch failed', { status: res.status, uri: String(localUri) }); } catch {}
+        // On some Android devices, content:// URIs are not fetchable. Copy to cache and retry.
+        if (String(localUri).startsWith('content://') || String(localUri).startsWith('file://')) {
+          try {
+            const extGuess = (String(localUri).match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/)?.[1] || 'jpg').toLowerCase();
+            const cachePath = `${FileSystem.cacheDirectory}upload_${Date.now()}.${extGuess}`;
+            await FileSystem.copyAsync({ from: localUri, to: cachePath });
+            res = await fetch(cachePath);
+          } catch (copyErr) {
+            try { console.warn('[uploadProfileImage] copy to cache failed', copyErr?.message || copyErr); } catch {}
+          }
+        }
       }
-      const blob = await res.blob();
-      // Derive extension from mime or uri as fallback
-      let ext = (blob.type && blob.type.split('/')[1]) || '';
+      if (!res.ok) {
+        return { success: false, error: `Unable to read selected file after retry (${res.status})` };
+      }
+      // Prefer ArrayBuffer on native to avoid Blob quirks
+      const arrayBuffer = await res.arrayBuffer();
+      // Derive extension from headers or uri as fallback
+      let headerType = (res.headers && (res.headers.get?.('Content-Type') || res.headers.get?.('content-type'))) || '';
+      let ext = '';
+      if (headerType && headerType.includes('/')) {
+        ext = headerType.split('/')[1];
+      }
       if (!ext) {
         const m = String(localUri).match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
         ext = m ? m[1] : 'jpg';
       }
-      const contentType = blob.type || (ext ? `image/${ext}` : 'image/jpeg');
+      // Normalize HEIC/unknown types to jpg for broader compatibility
+      let contentType = headerType || (ext ? `image/${ext}` : 'image/jpeg');
+      const lowerType = String(contentType || '').toLowerCase();
+      const lowerExt = String(ext || '').toLowerCase();
+      if (!lowerType.startsWith('image/') || lowerType.includes('heic') || lowerType.includes('heif') || lowerExt === 'heic' || lowerExt === 'heif') {
+        contentType = 'image/jpeg';
+        ext = 'jpg';
+      }
       const folder = `users/${user.id}`;
       // Clean up old profile image variants before uploading (keep profile.json)
       try {
@@ -1150,11 +1191,11 @@ export const AuthProvider = ({ children }) => {
             await supabase.storage.from(STORAGE_BUCKET).remove(oldPics);
           }
         }
-      } catch {}
+      } catch { }
       // Deterministic path to keep a permanent URL; upsert overwrites
       const filePath = `${folder}/profile.${ext}`;
       // Upload with upsert to allow replacements
-      const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET).upload(filePath, blob, {
+      const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET).upload(filePath, arrayBuffer, {
         cacheControl: '3600',
         upsert: true,
         contentType,
@@ -1180,10 +1221,10 @@ export const AuthProvider = ({ children }) => {
               try {
                 const getResp = await fetch(`${publicUrl}${publicUrl.includes('?') ? '&' : '?'}_probe=${Date.now()}`, { method: 'GET', signal: ctrl.signal });
                 publicUrlReachable = !!getResp?.ok;
-              } catch {}
+              } catch { }
               clearTimeout(to);
             }
-          } catch {}
+          } catch { }
         }
       }
       let displayUrl = publicUrlReachable ? publicUrl : null;
@@ -1199,7 +1240,7 @@ export const AuthProvider = ({ children }) => {
       if (!displayUrl) return { success: false, error: 'Failed to obtain image URL' };
       // Cache-bust to ensure the just-uploaded image shows immediately
       const finalDisplayUrl = `${displayUrl}${displayUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
-      try { console.log('Profile image uploaded URL:', finalDisplayUrl); } catch {}
+      try { console.log('Profile image uploaded URL:', finalDisplayUrl); } catch { }
       // Persist only stable data: always store the storage path, and store a permanent public URL when available.
       const persistPatch = publicUrlReachable
         ? { profileImagePath: filePath, profileImage: publicUrl }
@@ -1237,7 +1278,7 @@ export const AuthProvider = ({ children }) => {
         }
         if (!path) return { success: false, error: 'No stored profile image path' };
         // Best-effort backfill of the derived path so future loads are stable
-        try { await updateUser({ profileImagePath: path }); } catch {}
+        try { await updateUser({ profileImagePath: path }); } catch { }
       }
       // Try to get a permanent public URL first and verify reachability
       const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
@@ -1252,17 +1293,17 @@ export const AuthProvider = ({ children }) => {
             try {
               const getResp = await fetch(`${pub.publicUrl}${pub.publicUrl.includes('?') ? '&' : '?'}_probe=${Date.now()}`, { method: 'GET', signal: ctrl.signal });
               reachable = !!getResp?.ok;
-            } catch {}
+            } catch { }
             clearTimeout(to);
           }
-        } catch {}
+        } catch { }
         if (reachable) {
           const url = `${pub.publicUrl}${pub.publicUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
           // Persist permanent public URL if current stored URL looks signed/temporary
           try {
             const looksSigned = typeof user?.profileImage === 'string' && /\/storage\/v1\/object\/sign\//.test(user.profileImage);
             if (looksSigned) await updateUser({ profileImage: pub.publicUrl });
-          } catch {}
+          } catch { }
           return { success: true, url };
         }
       }
@@ -1415,7 +1456,7 @@ export const AuthProvider = ({ children }) => {
         if (error) return { success: false, message: error.message };
         // Sync local state
         setUser((prev) => ({ ...(prev || {}), email: data.email }));
-        try { await AsyncStorage.setItem(STORAGE_KEYS.userSnapshot, JSON.stringify(data)); } catch {}
+        try { await AsyncStorage.setItem(STORAGE_KEYS.userSnapshot, JSON.stringify(data)); } catch { }
         return { success: true };
       } catch (e) {
         return { success: false, message: 'Unexpected error updating email' };
@@ -1455,10 +1496,10 @@ export const AuthProvider = ({ children }) => {
             if (Array.isArray(list) && list.length) {
               await supabase.storage.from(STORAGE_BUCKET).remove(list.map(f => `${folder}/${f.name}`));
             }
-          } catch {}
+          } catch { }
           await supabase.from('users').delete().eq('id', user.id);
         }
-      } catch {}
+      } catch { }
       logout();
       return { success: true };
     },
@@ -1470,4 +1511,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-

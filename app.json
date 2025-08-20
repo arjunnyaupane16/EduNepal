@@ -15,14 +15,24 @@
       "storageBucket": "ArjunNyaupane"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow EduNepal to access the camera to take profile photos.",
+        "NSPhotoLibraryUsageDescription": "Allow EduNepal to access your photo library to choose a profile photo.",
+        "NSPhotoLibraryAddUsageDescription": "Allow EduNepal to save images to your photo library."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",

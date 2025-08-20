@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
@@ -130,10 +131,16 @@ export default function Profile() {
 
     if (!result.canceled) {
       const uri = result.assets[0].uri;
-      // Optimistically show local image to avoid white flash
-      setProfileImage(uri);
+      // Convert to JPEG to avoid HEIC/HEIF issues on iOS/Android
+      let jpegUri = uri;
       try {
-        const resp = await uploadProfileImage(uri);
+        const conv = await manipulateAsync(uri, [], { compress: 0.9, format: SaveFormat.JPEG });
+        if (conv?.uri) jpegUri = conv.uri;
+      } catch {}
+      // Optimistically show converted local image to avoid white flash
+      setProfileImage(jpegUri);
+      try {
+        const resp = await uploadProfileImage(jpegUri);
         if (!resp?.success) {
           console.error('Image upload failed:', resp?.error);
           Alert.alert('Upload failed', 'Could not upload profile image.');
@@ -191,10 +198,16 @@ export default function Profile() {
 
     if (!result.canceled) {
       const uri = result.assets[0].uri;
-      // Optimistically show local image to avoid white flash
-      setProfileImage(uri);
+      // Convert to JPEG to avoid HEIC/HEIF issues on iOS/Android
+      let jpegUri = uri;
       try {
-        const resp = await uploadProfileImage(uri);
+        const conv = await manipulateAsync(uri, [], { compress: 0.9, format: SaveFormat.JPEG });
+        if (conv?.uri) jpegUri = conv.uri;
+      } catch {}
+      // Optimistically show converted local image to avoid white flash
+      setProfileImage(jpegUri);
+      try {
+        const resp = await uploadProfileImage(jpegUri);
         if (!resp?.success) {
           console.error('Image upload failed:', resp?.error);
           Alert.alert('Upload failed', 'Could not upload profile image.');
