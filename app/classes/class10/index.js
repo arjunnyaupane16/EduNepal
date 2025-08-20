@@ -1,0 +1,120 @@
+import React from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
+import BottomNavBar from '../../../components/BottomNavBar';
+import TopNavBar from '../../../components/TopNavBar';
+import styles from '../../../styles/ClassScreenStyles';
+
+export default function Class10() {
+  const { theme } = useTheme();
+  const { language } = useLanguage();
+
+  const cardColors = [
+    { bg: '#e0f2fe', icon: '#0ea5e9' }, // Textbook (blue)
+    { bg: '#fef3c7', icon: '#f59e0b' }, // Guidebook (amber)
+    { bg: '#e0e7ff', icon: '#6366f1' }, // Previous Papers (indigo)
+    { bg: '#dcfce7', icon: '#22c55e' }, // Practice Questions (green)
+  ];
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Top Navigation Bar with Profile */}
+      <TopNavBar title="Class 10" showMenu={true} showNotifications={true} />
+
+      {/* Search Box */}
+      <View style={[styles.searchContainer, {
+        backgroundColor: theme.cardBackground,
+        borderColor: theme.border
+      }]}>
+        <MaterialIcons name="search" size={20} color={theme.placeholder} />
+        <TextInput
+          placeholder="Search for books, notes..."
+          placeholderTextColor={theme.placeholder}
+          style={[styles.searchInput, { color: theme.text }]}
+        />
+      </View>
+
+      {/* Content */}
+      <ScrollView contentContainerStyle={styles.content}>
+
+        {/* Grid Cards */}
+        <View style={styles.grid}>
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            onPress={() => router.push('/classes/class10/textbook')}
+          >
+            <View style={[styles.iconWrapper, { backgroundColor: cardColors[0].bg }]}>
+              <MaterialIcons name="menu-book" size={20} color={cardColors[0].icon} />
+            </View>
+            <Text style={[styles.title, { color: theme.text }]}>Textbooks</Text>
+            <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+              CDC-approved books in English & Nepali
+            </Text>
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+              <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            onPress={() => router.push('/classes/class10/guidebooks')}
+          >
+            <View style={[styles.iconWrapper, { backgroundColor: cardColors[1].bg }]}>
+              <MaterialIcons name="book-online" size={20} color={cardColors[1].icon} />
+            </View>
+            <Text style={[styles.title, { color: theme.text }]}>Guidebooks</Text>
+            <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+              Chapter-wise notes, explanations, and exam
+            </Text>
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+              <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            onPress={() => router.push('/classes/class10/previouspapers')}
+          >
+            <View style={[styles.iconWrapper, { backgroundColor: cardColors[2].bg }]}>
+              <MaterialIcons name="event-note" size={20} color={cardColors[2].icon} />
+            </View>
+            <Text style={[styles.title, { color: theme.text }]}>Previous Papers</Text>
+            <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+              Access last 3–5 years' Board/Final exam
+            </Text>
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+              <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            onPress={() => router.push('/classes/class10/practicequestions')}
+          >
+            <View style={[styles.iconWrapper, { backgroundColor: cardColors[3].bg }]}>
+              <MaterialIcons name="check-circle-outline" size={20} color={cardColors[3].icon} />
+            </View>
+            <Text style={[styles.title, { color: theme.text }]}>Practice Questions</Text>
+            <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+              Expected questions for exams: short, long
+            </Text>
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+              <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={[styles.recentActivityHeader, { color: theme.text }]}>
+          Recent Activity
+        </Text>
+        {/* Add recent activity content here if needed */}
+      </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNavBar active="home" />
+    </View>
+  );
+}
