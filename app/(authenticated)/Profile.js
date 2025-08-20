@@ -146,7 +146,7 @@ export default function Profile() {
               const okFresh = await prefetchImage(fresh.url, 4000);
               if (okFresh) { setProfileImage(fresh.url); displayed = true; }
             }
-          } catch {}
+          } catch { }
           if (!displayed) {
             const ok = await prefetchImage(resp.url, 4000);
             if (ok) { setProfileImage(resp.url); displayed = true; }
@@ -160,7 +160,7 @@ export default function Profile() {
                   const ok2 = await prefetchImage(fresh.url, 4000);
                   if (ok2) { setProfileImage(fresh.url); displayed = true; break; }
                 }
-              } catch {}
+              } catch { }
               await new Promise(r => setTimeout(r, 1500));
             }
           }
@@ -206,7 +206,7 @@ export default function Profile() {
               const okFresh = await prefetchImage(fresh.url, 4000);
               if (okFresh) { setProfileImage(fresh.url); displayed = true; }
             }
-          } catch {}
+          } catch { }
           if (!displayed) {
             const ok = await prefetchImage(resp.url, 4000);
             if (ok) { setProfileImage(resp.url); displayed = true; }
@@ -219,7 +219,7 @@ export default function Profile() {
                   const ok2 = await prefetchImage(fresh.url, 4000);
                   if (ok2) { setProfileImage(fresh.url); displayed = true; break; }
                 }
-              } catch {}
+              } catch { }
               await new Promise(r => setTimeout(r, 1500));
             }
           }
@@ -347,20 +347,32 @@ export default function Profile() {
                 style={styles.profileImage}
                 resizeMode="cover"
                 onError={async () => {
-                  console.warn('Profile image failed to load, attempting fresh signed URL...');
-                  if (!triedRefreshRef.current && getFreshProfileImageUrl) {
-                    triedRefreshRef.current = true;
-                    try {
+                  try {
+                    console.warn('[Profile] Image failed to load:', {
+                      url: String(profileImage || ''),
+                      path: user?.profileImagePath || null,
+                    });
+                    if (!triedRefreshRef.current && typeof getFreshProfileImageUrl === 'function') {
+                      triedRefreshRef.current = true;
                       const res = await getFreshProfileImageUrl();
                       if (res?.success && res.url) {
-                        const ok = await prefetchImage(res.url);
+                        const cacheBusted = res.url.includes('?')
+                          ? `${res.url}&cb=${Date.now()}`
+                          : `${res.url}?cb=${Date.now()}`;
+                        const ok = await prefetchImage(cacheBusted);
                         if (ok) {
-                          setProfileImage(res.url);
+                          setProfileImage(cacheBusted);
                           return;
                         }
+                        console.warn('[Profile] Prefetch of refreshed URL failed');
+                      } else {
+                        console.warn('[Profile] Could not obtain refreshed URL');
                       }
-                    } catch {}
+                    }
+                  } catch (e) {
+                    console.error('[Profile] onError handler exception:', e?.message || e);
                   }
+                  // Fallback to default avatar icon
                   setProfileImage(null);
                 }}
                 onLoadStart={() => setImageLoading(true)}
