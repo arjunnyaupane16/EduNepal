@@ -1,24 +1,56 @@
 // app/settings/DeleteAccount.js
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
 
 export default function DeleteAccount() {
   const { t } = useLanguage();
   const { theme } = useTheme();
-  const { user, logout } = useAuth();
-  
+  const { user, requestAccountDeletionFlow, confirmAccountDeletionFlow } = useAuth();
+
   const [password, setPassword] = useState('');
   const [confirmText, setConfirmText] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [codeRequested, setCodeRequested] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+
+  // Email validation and checks
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+    return re.test(String(email).trim());
+  };
+
+  const emailChecks = {
+    entered: emailInput.trim().length > 0,
+    validFormat: emailInput.trim().length > 0 && validateEmail(emailInput),
+    matchesAccount: emailInput.trim().length > 0 && user?.email ? emailInput.trim().toLowerCase() === user.email.toLowerCase() : false,
+  };
+
+  const otherChecks = {
+    passwordEntered: password.length > 0,
+    deleteTyped: confirmText === 'DELETE',
+  };
+
+  const canDelete = emailChecks.validFormat && emailChecks.matchesAccount && otherChecks.passwordEntered && otherChecks.deleteTyped && !loading;
 
   const handleDeleteAccount = async () => {
-    if (!password) {
-      Alert.alert('Error', 'Please enter your password');
+    if (!emailInput || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (!validateEmail(emailInput)) {
+      Alert.alert('Error', 'Please enter a valid email');
+      return;
+    }
+
+    if (!user?.email || emailInput.trim().toLowerCase() !== user.email.toLowerCase()) {
+      Alert.alert('Error', 'Entered email does not match your account email');
       return;
     }
 
@@ -32,22 +64,38 @@ export default function DeleteAccount() {
       'Are you absolutely sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete Account', 
+        {
+          text: 'Send Verification Code',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             setLoading(true);
-            // Simulate API call
-            setTimeout(() => {
-              setLoading(false);
-              Alert.alert('Account Deleted', 'Your account has been permanently deleted.', [
-                { text: 'OK', onPress: () => logout() }
-              ]);
-            }, 2000);
+            const resp = await requestAccountDeletionFlow(password);
+            setLoading(false);
+            if (!resp?.success) {
+              Alert.alert('Error', resp?.message || 'Failed to send verification code');
+              return;
+            }
+            setCodeRequested(true);
+            Alert.alert('Verification Required', 'We sent a verification code to your email. Enter it below to finalize deletion.');
           }
         }
       ]
     );
+  };
+
+  const handleConfirmDeletion = async () => {
+    if (!verificationCode) {
+      Alert.alert('Error', 'Enter the verification code');
+      return;
+    }
+    setLoading(true);
+    const r = await confirmAccountDeletionFlow(verificationCode);
+    setLoading(false);
+    if (!r?.success) {
+      Alert.alert('Error', r?.message || 'Failed to delete account');
+      return;
+    }
+    Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
   };
 
   return (
@@ -93,7 +141,23 @@ export default function DeleteAccount() {
 
         <View style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Confirm Account Deletion</Text>
-          
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.text }]}>Enter your email *</Text>
+            <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
+              <Ionicons name="mail-outline" size={20} color={theme.placeholder} />
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Enter your account email"
+                placeholderTextColor={theme.placeholder}
+                value={emailInput}
+                onChangeText={setEmailInput}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: theme.text }]}>Enter your password *</Text>
             <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
@@ -107,10 +171,10 @@ export default function DeleteAccount() {
                 secureTextEntry={!showPassword}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons 
-                  name={showPassword ? "eye-off" : "eye"} 
-                  size={20} 
-                  color={theme.placeholder} 
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={20}
+                  color={theme.placeholder}
                 />
               </TouchableOpacity>
             </View>
@@ -130,6 +194,28 @@ export default function DeleteAccount() {
               />
             </View>
           </View>
+
+          {(emailInput.length > 0 || password.length > 0 || confirmText.length > 0) && (
+            <View style={[styles.requirementsBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              <Text style={[styles.requirementsTitle, { color: theme.text }]}>Requirements:</Text>
+              <View style={styles.requirementRow}>
+                <Ionicons name={emailChecks.validFormat ? 'checkmark-circle' : 'close-circle'} size={16} color={emailChecks.validFormat ? '#22c55e' : '#ef4444'} />
+                <Text style={[styles.requirementText, { color: emailChecks.validFormat ? '#22c55e' : '#ef4444' }]}>Valid email format</Text>
+              </View>
+              <View style={styles.requirementRow}>
+                <Ionicons name={emailChecks.matchesAccount ? 'checkmark-circle' : 'close-circle'} size={16} color={emailChecks.matchesAccount ? '#22c55e' : '#ef4444'} />
+                <Text style={[styles.requirementText, { color: emailChecks.matchesAccount ? '#22c55e' : '#ef4444' }]}>Email matches your account</Text>
+              </View>
+              <View style={styles.requirementRow}>
+                <Ionicons name={otherChecks.passwordEntered ? 'checkmark-circle' : 'close-circle'} size={16} color={otherChecks.passwordEntered ? '#22c55e' : '#ef4444'} />
+                <Text style={[styles.requirementText, { color: otherChecks.passwordEntered ? '#22c55e' : '#ef4444' }]}>Password entered</Text>
+              </View>
+              <View style={styles.requirementRow}>
+                <Ionicons name={otherChecks.deleteTyped ? 'checkmark-circle' : 'close-circle'} size={16} color={otherChecks.deleteTyped ? '#22c55e' : '#ef4444'} />
+                <Text style={[styles.requirementText, { color: otherChecks.deleteTyped ? '#22c55e' : '#ef4444' }]}>DELETE typed correctly</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={[styles.alternativeSection, { backgroundColor: '#f0f9ff', borderColor: '#0ea5e9' }]}>
@@ -142,20 +228,54 @@ export default function DeleteAccount() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.deleteButton, { opacity: loading ? 0.7 : 1 }]}
-          onPress={handleDeleteAccount}
-          disabled={loading}
-        >
-          {loading ? (
-            <Text style={styles.deleteButtonText}>Deleting Account...</Text>
-          ) : (
-            <>
-              <Ionicons name="trash" size={20} color="#fff" />
-              <Text style={styles.deleteButtonText}>Delete My Account Permanently</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {!codeRequested ? (
+          <TouchableOpacity
+            style={[styles.deleteButton, { opacity: canDelete ? 1 : 0.7 }]}
+            onPress={handleDeleteAccount}
+            disabled={!canDelete}
+          >
+            {loading ? (
+              <Text style={styles.deleteButtonText}>Sending Code...</Text>
+            ) : (
+              <>
+                <Ionicons name="trash" size={20} color="#fff" />
+                <Text style={styles.deleteButtonText}>Send Verification Code</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.text }]}>Verification Code *</Text>
+              <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}> 
+                <Ionicons name="key" size={20} color={theme.placeholder} />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Enter the code from your email"
+                  placeholderTextColor={theme.placeholder}
+                  value={verificationCode}
+                  onChangeText={setVerificationCode}
+                  keyboardType="number-pad"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.deleteButton, { opacity: loading ? 0.7 : 1 }]}
+              onPress={handleConfirmDeletion}
+              disabled={loading}
+            >
+              {loading ? (
+                <Text style={styles.deleteButtonText}>Deleting Account...</Text>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-done" size={20} color="#fff" />
+                  <Text style={styles.deleteButtonText}>Confirm Account Deletion</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -269,6 +389,26 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     marginLeft: 10,
+  },
+  requirementsBox: {
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  requirementsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  requirementText: {
+    fontSize: 13,
+    marginLeft: 8,
   },
   alternativeSection: {
     flexDirection: 'row',

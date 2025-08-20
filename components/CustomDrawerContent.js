@@ -2,9 +2,9 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../app/context/ThemeContext';
 import { useAuth } from '../app/context/AuthContext';
 import { useLanguage } from '../app/context/LanguageContext';
+import { useTheme } from '../app/context/ThemeContext';
 
 const DrawerItemBox = ({ icon, label, desc, onPress, theme }) => (
   <TouchableOpacity onPress={onPress} style={[styles.box, { backgroundColor: theme.background }]}>
@@ -57,7 +57,7 @@ export default function CustomDrawerContent(props) {
         icon="settings"
         label={t('settings')}
         desc="Manage application preferences"
-        onPress={() => router.push('/(authenticated)/settings')}
+        onPress={() => router.push('/settings')}
         theme={theme}
       />
 

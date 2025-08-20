@@ -35,6 +35,179 @@ export const AuthProvider = ({ children }) => {
     isAdmin: 'auth:isAdmin',
   };
 
+  // Username change: request code to CURRENT email, then confirm and update DB
+  const requestUsernameChange = async ({ newUsername, password }) => {
+    if (!user?.email) return { success: false, message: 'No current email' };
+    if (!newUsername || newUsername.length < 3) return { success: false, message: 'Username too short' };
+    if (String(user?.password || '') !== String(password || '')) {
+      return { success: false, message: 'Current password is incorrect' };
+    }
+    return await sendVerificationCode({ purpose: 'change_username', email: user?.email });
+  };
+
+  const confirmUsernameChange = async ({ newUsername, code }) => {
+    try {
+      const v = await verifyCode({ purpose: 'change_username', code, email: user?.email });
+      if (!v.success) return v;
+      if (!supabase || !user?.id) return { success: false, message: 'Supabase unavailable' };
+      const targetId = user.id;
+      const { data: updated, error } = isLikelyUuid(targetId)
+        ? await supabaseUpdateWithPrune(targetId, { username: newUsername })
+        : await supabase
+            .from('users')
+            .update({ username: newUsername })
+            .or([user?.email ? `email.eq.${user.email}` : null, user?.username ? `username.eq.${user.username}` : null].filter(Boolean).join(','))
+            .select('*')
+            .single();
+      if (error) return { success: false, message: error?.message || 'Failed to update username' };
+      const mapped = fromDbUser(updated);
+      setUser(mapped);
+      setUsers(list => {
+        const without = list.filter(u => u.id !== mapped.id);
+        return [...without, mapped];
+      });
+      try { await saveUserProfileJsonToStorage(mapped); } catch {}
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: 'Unexpected error updating username' };
+    }
+  };
+
+  // --- Sensitive action verification helpers ---
+  const sendVerificationCode = async ({ purpose, email }) => {
+    try {
+      const targetEmail = String(email || user?.email || '').trim();
+      if (!targetEmail) return { success: false, message: 'No email available' };
+      const res = await fetch(`${SERVER_URL}/auth/send-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail, purpose })
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) return { success: false, message: json?.error || 'Failed to send code' };
+      return { success: true, expiresInSeconds: json.expiresInSeconds };
+    } catch (e) {
+      return { success: false, message: 'Network error while sending code' };
+    }
+  };
+
+  const verifyCode = async ({ purpose, code, email }) => {
+    try {
+      const targetEmail = String(email || user?.email || '').trim();
+      if (!targetEmail) return { success: false, message: 'No email available' };
+      const res = await fetch(`${SERVER_URL}/auth/verify-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail, purpose, code })
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) return { success: false, message: json?.error || 'Invalid code' };
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: 'Network error while verifying code' };
+    }
+  };
+
+  // Change password with verification code
+  const changePasswordWithVerification = async ({ currentPassword, newPassword, code }) => {
+    try {
+      if (!user?.id) return { success: false, message: 'No current user' };
+      // Basic local check to avoid unnecessary calls
+      if (String(user?.password || '') !== String(currentPassword || '')) {
+        return { success: false, message: 'Current password is incorrect' };
+      }
+      const v = await verifyCode({ purpose: 'change_password', code, email: user?.email });
+      if (!v.success) return v;
+      if (!supabase || !isLikelyUuid(user.id)) return { success: false, message: 'Supabase unavailable' };
+      const { data: updated, error } = await supabaseUpdateWithPrune(user.id, { password: newPassword });
+      if (error) return { success: false, message: error?.message || 'Failed to update password' };
+      const mapped = fromDbUser(updated);
+      setUser(mapped);
+      setUsers(list => {
+        const without = list.filter(u => u.id !== mapped.id);
+        return [...without, mapped];
+      });
+      try { await saveUserProfileJsonToStorage(mapped); } catch {}
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: 'Unexpected error changing password' };
+    }
+  };
+
+  // Email change: request code to NEW email, then confirm and update DB
+  const requestEmailChange = async ({ newEmail, password }) => {
+    if (!user?.email) return { success: false, message: 'No current email' };
+    if (String(user?.password || '') !== String(password || '')) {
+      return { success: false, message: 'Current password is incorrect' };
+    }
+    return await sendVerificationCode({ purpose: 'change_email', email: newEmail });
+  };
+
+  const confirmEmailChange = async ({ newEmail, code }) => {
+    try {
+      const v = await verifyCode({ purpose: 'change_email', code, email: newEmail });
+      if (!v.success) return v;
+      if (!supabase || !user?.id) return { success: false, message: 'Supabase unavailable' };
+      const targetId = user.id;
+      const { data: updated, error } = isLikelyUuid(targetId)
+        ? await supabaseUpdateWithPrune(targetId, { email: newEmail })
+        : await supabase
+            .from('users')
+            .update({ email: newEmail })
+            .or([user?.email ? `email.eq.${user.email}` : null, user?.username ? `username.eq.${user.username}` : null].filter(Boolean).join(','))
+            .select('*')
+            .single();
+      if (error) return { success: false, message: error?.message || 'Failed to update email' };
+      const mapped = fromDbUser(updated);
+      setUser(mapped);
+      setUsers(list => {
+        const without = list.filter(u => u.id !== mapped.id);
+        return [...without, mapped];
+      });
+      // Register updated email for server notifications
+      if (mapped?.email) {
+        fetch(`${SERVER_URL}/register-email`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: mapped.email })
+        }).catch(() => {});
+      }
+      try { await saveUserProfileJsonToStorage(mapped); } catch {}
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: 'Unexpected error changing email' };
+    }
+  };
+
+  // Account deletion: request/confirm
+  const requestAccountDeletion = async ({ password }) => {
+    if (String(user?.password || '') !== String(password || '')) {
+      return { success: false, message: 'Current password is incorrect' };
+    }
+    return await sendVerificationCode({ purpose: 'delete_account', email: user?.email });
+  };
+
+  const confirmAccountDeletion = async ({ code }) => {
+    try {
+      const v = await verifyCode({ purpose: 'delete_account', code, email: user?.email });
+      if (!v.success) return v;
+      if (!supabase || !user?.id) {
+        // Even if DB not reachable, at least log out
+        logout();
+        return { success: true };
+      }
+      try {
+        if (isLikelyUuid(user.id)) {
+          await supabase.from('users').delete().eq('id', user.id);
+        } else if (user?.email) {
+          await supabase.from('users').delete().eq('email', user.email);
+        }
+      } catch {}
+      logout();
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: 'Unexpected error deleting account' };
+    }
+  };
+
   // Delete profile image: clear DB fields and try to remove stored files
   const deleteProfileImage = async () => {
     try {
@@ -458,7 +631,7 @@ export const AuthProvider = ({ children }) => {
     const idDigits = id.replace(/[^\d]/g, '');
 
     // Find by email OR username OR phone
-    const foundUser = users.find(u => {
+    let foundUser = users.find(u => {
       const emailMatch = (u.email || '').toLowerCase() === idLower;
       const usernameMatch = (u.username || '').toLowerCase() === idLower;
       const phoneMatch = (u.phone || '').replace(/[^\d]/g, '') === idDigits;
@@ -510,6 +683,46 @@ export const AuthProvider = ({ children }) => {
         }).catch(() => { });
       }
       return { success: true, user: foundUser };
+    }
+
+    // Web-safe fallback: if cache hasn't populated yet, query Supabase directly for regular users
+    if (supabase) {
+      try {
+        // Build an OR filter for identifier; AND with password equality
+        const orFilterParts = [];
+        // Match by email
+        orFilterParts.push(`email.eq.${id}`);
+        // Match by username (lowercase compare via DB col is fine for exact, if case differs you may normalize)
+        orFilterParts.push(`username.eq.${id}`);
+        // Match by phone digits if provided
+        if (idDigits) orFilterParts.push(`phone_digits.eq.${idDigits}`);
+
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .or(orFilterParts.join(','))
+          .eq('password', password)
+          .limit(1)
+          .maybeSingle();
+        if (!error && data) {
+          const mapped = fromDbUser(data);
+          // Merge into cache
+          setUsers(prev => {
+            const without = prev.filter(u => u.id !== mapped.id);
+            return [...without, mapped];
+          });
+          setIsLoggedIn(true);
+          setUser(mapped);
+          if (mapped?.email) {
+            fetch(`${SERVER_URL}/register-email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: mapped.email })
+            }).catch(() => { });
+          }
+          return { success: true, user: mapped };
+        }
+      } catch { /* ignore and fall through */ }
     }
 
     return { success: false, message: 'Invalid credentials' };
@@ -950,34 +1163,51 @@ export const AuthProvider = ({ children }) => {
         console.warn('Supabase storage upload error:', upErr);
         return { success: false, error: upErr };
       }
-      // Build permanent public URL; requires bucket to be Public in dashboard.
-      // We still compute signed URL as a fallback if the bucket is private.
+      // Build permanent public URL if bucket is public and the URL is reachable; otherwise compute a signed URL for display only.
       let publicUrl = null;
+      let publicUrlReachable = false;
       {
         const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
         publicUrl = pub?.publicUrl || null;
+        if (publicUrl) {
+          try {
+            const head = await fetch(`${publicUrl}${publicUrl.includes('?') ? '&' : '?'}_probe=${Date.now()}`, { method: 'HEAD' });
+            publicUrlReachable = !!head?.ok;
+            if (!publicUrlReachable) {
+              // Some CDNs may not support HEAD; try GET with small timeout
+              const ctrl = new AbortController();
+              const to = setTimeout(() => ctrl.abort(), 2500);
+              try {
+                const getResp = await fetch(`${publicUrl}${publicUrl.includes('?') ? '&' : '?'}_probe=${Date.now()}`, { method: 'GET', signal: ctrl.signal });
+                publicUrlReachable = !!getResp?.ok;
+              } catch {}
+              clearTimeout(to);
+            }
+          } catch {}
+        }
       }
-      let baseUrl = publicUrl;
-      if (!baseUrl) {
-        // Fallback to a short-lived signed URL when bucket is private
+      let displayUrl = publicUrlReachable ? publicUrl : null;
+      if (!displayUrl) {
+        // Bucket is private: create a short-lived signed URL for display only.
         try {
           const { data: signed, error: signErr } = await supabase.storage
             .from(STORAGE_BUCKET)
             .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days
-          if (!signErr) baseUrl = signed?.signedUrl || null;
+          if (!signErr) displayUrl = signed?.signedUrl || null;
         } catch { }
       }
+      if (!displayUrl) return { success: false, error: 'Failed to obtain image URL' };
       // Cache-bust to ensure the just-uploaded image shows immediately
-      const finalUrl = baseUrl ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : null;
-      if (!finalUrl) return { success: false, error: 'Failed to obtain image URL' };
-      // Log final URL for debugging/verification
-      try { console.log('Profile image uploaded URL:', finalUrl); } catch {}
-      // Persist URL and storage path to user row
-      const resp = await updateUser({ profileImage: finalUrl, profileImagePath: filePath });
-      if (!resp?.success) return { success: false, error: resp?.error || 'Failed to save profileImage' };
-      // Best-effort: also persist latest profile JSON to Storage for consistency
+      const finalDisplayUrl = `${displayUrl}${displayUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+      try { console.log('Profile image uploaded URL:', finalDisplayUrl); } catch {}
+      // Persist only stable data: always store the storage path, and store a permanent public URL when available.
+      const persistPatch = publicUrlReachable
+        ? { profileImagePath: filePath, profileImage: publicUrl }
+        : { profileImagePath: filePath };
+      const resp = await updateUser(persistPatch);
+      if (!resp?.success) return { success: false, error: resp?.error || 'Failed to save profile image metadata' };
       try { await saveUserProfileJsonToStorage(resp.user || user); } catch { }
-      return { success: true, url: finalUrl, path: filePath };
+      return { success: true, url: finalDisplayUrl, path: filePath };
     } catch (e) {
       console.warn('uploadProfileImage exception:', e?.message || e);
       return { success: false, error: e };
@@ -1006,12 +1236,35 @@ export const AuthProvider = ({ children }) => {
           }
         }
         if (!path) return { success: false, error: 'No stored profile image path' };
+        // Best-effort backfill of the derived path so future loads are stable
+        try { await updateUser({ profileImagePath: path }); } catch {}
       }
-      // Try to get a permanent public URL first
+      // Try to get a permanent public URL first and verify reachability
       const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
       if (pub?.publicUrl) {
-        const url = `${pub.publicUrl}${pub.publicUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
-        return { success: true, url };
+        let reachable = false;
+        try {
+          const head = await fetch(`${pub.publicUrl}${pub.publicUrl.includes('?') ? '&' : '?'}_probe=${Date.now()}`, { method: 'HEAD' });
+          reachable = !!head?.ok;
+          if (!reachable) {
+            const ctrl = new AbortController();
+            const to = setTimeout(() => ctrl.abort(), 2500);
+            try {
+              const getResp = await fetch(`${pub.publicUrl}${pub.publicUrl.includes('?') ? '&' : '?'}_probe=${Date.now()}`, { method: 'GET', signal: ctrl.signal });
+              reachable = !!getResp?.ok;
+            } catch {}
+            clearTimeout(to);
+          }
+        } catch {}
+        if (reachable) {
+          const url = `${pub.publicUrl}${pub.publicUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+          // Persist permanent public URL if current stored URL looks signed/temporary
+          try {
+            const looksSigned = typeof user?.profileImage === 'string' && /\/storage\/v1\/object\/sign\//.test(user.profileImage);
+            if (looksSigned) await updateUser({ profileImage: pub.publicUrl });
+          } catch {}
+          return { success: true, url };
+        }
       }
       // Fallback: sign a temporary URL if bucket is private
       const { data, error } = await supabase.storage
@@ -1080,6 +1333,15 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: 'Network error sending code' };
       }
     },
+    // Username change flow helpers
+    requestUsernameChangeFlow: async (newUsername, password) => {
+      try { return await requestUsernameChange({ newUsername, password }); }
+      catch { return { success: false, message: 'Unexpected error' }; }
+    },
+    confirmUsernameChangeFlow: async (newUsername, code) => {
+      try { return await confirmUsernameChange({ newUsername, code }); }
+      catch { return { success: false, message: 'Unexpected error' }; }
+    },
     verifyCode: async (purpose, code, emailOverride) => {
       try {
         const targetEmail = String(emailOverride || user?.email || '').trim();
@@ -1095,6 +1357,15 @@ export const AuthProvider = ({ children }) => {
       } catch {
         return { success: false, message: 'Network error verifying code' };
       }
+    },
+    // Email change flow helpers (request requires current password)
+    requestEmailChangeFlow: async (newEmail, password) => {
+      try { return await requestEmailChange({ newEmail, password }); }
+      catch { return { success: false, message: 'Unexpected error' }; }
+    },
+    confirmEmailChangeFlow: async (newEmail, code) => {
+      try { return await confirmEmailChange({ newEmail, code }); }
+      catch { return { success: false, message: 'Unexpected error' }; }
     },
     changePasswordWithVerification: async (newPassword, code) => {
       if (!newPassword || newPassword.length < 6) return { success: false, message: 'Password too short' };
@@ -1120,8 +1391,8 @@ export const AuthProvider = ({ children }) => {
       // UI is expected to disable direct email change for normal users. Keep method for future admin tooling.
       if (!newEmail || !newEmail.includes('@')) return { success: false, message: 'Invalid email' };
       const v = await (async () => {
-        const targetEmail = String(user?.email || '').trim();
-        if (!targetEmail) return { success: false, message: 'No current email on file' };
+        // Verification code is sent to the NEW email, so verify against newEmail
+        const targetEmail = String(newEmail || '').trim();
         try {
           const resp = await fetch(`${SERVER_URL}/auth/verify-code`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1152,6 +1423,15 @@ export const AuthProvider = ({ children }) => {
     },
     updateEmailWithVerification: async (newEmail, code) => {
       return await value.changeEmailWithVerification(newEmail, code);
+    },
+    // Account deletion flow helpers (request requires current password)
+    requestAccountDeletionFlow: async (password) => {
+      try { return await requestAccountDeletion({ password }); }
+      catch { return { success: false, message: 'Unexpected error' }; }
+    },
+    confirmAccountDeletionFlow: async (code) => {
+      try { return await confirmAccountDeletion({ code }); }
+      catch { return { success: false, message: 'Unexpected error' }; }
     },
     deleteAccountWithVerification: async (code) => {
       const targetEmail = String(user?.email || '').trim();

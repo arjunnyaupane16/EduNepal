@@ -1,7 +1,8 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import React from 'react';
-import { Text, TouchableOpacity, View, Image } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+import Avatar from './Avatar';
 import { useAuth } from '../app/context/AuthContext';
 import { useTheme } from '../app/context/ThemeContext';
 
@@ -44,13 +45,7 @@ export default function TopNavBar({ title = "EduNepal", showMenu = true, showNot
           <Ionicons name="notifications-outline" size={24} color={theme.text} />
         )}
         <TouchableOpacity onPress={() => router.push('/Profile')} style={styles.profileContainer}>
-          {user?.profileImage ? (
-            <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
-          ) : (
-            <View style={[styles.initialsContainer, { backgroundColor: theme.primary || '#007bff' }]}>
-              <Text style={styles.initialsText}>{getInitials(user?.fullName || user?.name)}</Text>
-            </View>
-          )}
+          <Avatar size={32} borderColor={theme.primary || '#007bff'} />
         </TouchableOpacity>
       </View>
     </View>
@@ -82,25 +77,5 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#007bff',
-  },
-  initialsContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#007bff',
-  },
-  initialsText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
+  // Avatar handles its own image and fallback styling
 };

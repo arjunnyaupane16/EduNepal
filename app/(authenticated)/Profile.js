@@ -7,7 +7,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 
 export default function Profile() {
-  const { user, logout, updateUser, updateUserById, isAdmin, canAdminEditField, uploadProfileImage, deleteProfileImage, getFreshProfileImageUrl, requestVerificationCode, deleteAccountWithVerification } = useAuth();
+  const { user, logout, updateUser, updateUserById, isAdmin, canAdminEditField, uploadProfileImage, deleteProfileImage, getFreshProfileImageUrl, requestUsernameChangeFlow, confirmUsernameChangeFlow, requestEmailChangeFlow, confirmEmailChangeFlow } = useAuth();
   const { theme } = useTheme();
   const { t } = useLanguage();
 
@@ -32,6 +32,20 @@ export default function Profile() {
   // Autosave status
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Inline verification flows for sensitive fields
+  const [showUsernameChange, setShowUsernameChange] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [usernamePassword, setUsernamePassword] = useState('');
+  const [usernameCodeRequested, setUsernameCodeRequested] = useState(false);
+  const [usernameCode, setUsernameCode] = useState('');
+
+  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [confirmNewEmail, setConfirmNewEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailCodeRequested, setEmailCodeRequested] = useState(false);
+  const [emailCode, setEmailCode] = useState('');
 
   // Helper: prefetch a URL and resolve true/false
   const prefetchImage = async (url, msTimeout = 6000) => {
@@ -151,7 +165,7 @@ export default function Profile() {
             }
           }
           if (!displayed) {
-            Alert.alert('Notice', 'Uploaded, but could not load the image yet. It will appear shortly.');
+            // Suppress noisy alert; silently allow image to appear after CDN propagation.
           }
         }
       } catch (e) {
@@ -210,7 +224,7 @@ export default function Profile() {
             }
           }
           if (!displayed) {
-            Alert.alert('Notice', 'Uploaded, but could not load the image yet. It will appear shortly.');
+            // Suppress notice; silently allow image to appear after CDN propagation.
           }
         }
       } catch (e) {
@@ -328,6 +342,7 @@ export default function Profile() {
           {profileImage ? (
             <>
               <Image
+                key={String(profileImage)}
                 source={{ uri: String(profileImage) }}
                 style={styles.profileImage}
                 resizeMode="cover"
@@ -405,11 +420,84 @@ export default function Profile() {
           <View style={styles.inputContainer}>
             <Text style={[styles.inputLabel, { color: theme.secondaryText }]}>Username</Text>
             {isEditing ? (
-              <TextInput
-                style={[styles.textInput, { color: theme.text, borderColor: theme.border, backgroundColor: '#f3f4f6' }]}
-                value={editedUsername}
-                editable={false}
-              />
+              <View>
+                <TextInput
+                  style={[styles.textInput, { color: theme.text, borderColor: theme.border, backgroundColor: '#f3f4f6' }]}
+                  value={editedUsername}
+                  editable={false}
+                />
+                {!showUsernameChange ? (
+                  <TouchableOpacity style={styles.linkButton} onPress={() => { setShowUsernameChange(true); setNewUsername(''); setUsernamePassword(''); setUsernameCode(''); setUsernameCodeRequested(false); }}>
+                    <Text style={styles.linkButtonText}>Change Username (requires email verification)</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={{ marginTop: 8 }}>
+                    {!usernameCodeRequested ? (
+                      <>
+                        <TextInput
+                          style={[styles.textInput, { color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                          placeholder="New username"
+                          placeholderTextColor={theme.secondaryText}
+                          value={newUsername}
+                          onChangeText={setNewUsername}
+                          autoCapitalize="none"
+                        />
+                        <TextInput
+                          style={[styles.textInput, { color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                          placeholder="Current password"
+                          placeholderTextColor={theme.secondaryText}
+                          value={usernamePassword}
+                          onChangeText={setUsernamePassword}
+                          secureTextEntry
+                        />
+                        <TouchableOpacity
+                          style={styles.verifyButton}
+                          onPress={async () => {
+                            if (!newUsername || newUsername.length < 3) { Alert.alert('Error', 'Username must be at least 3 characters'); return; }
+                            if (!usernamePassword) { Alert.alert('Error', 'Enter your current password'); return; }
+                            const resp = await requestUsernameChangeFlow(newUsername, usernamePassword);
+                            if (!resp?.success) { Alert.alert('Error', resp?.message || 'Failed to send code'); return; }
+                            setUsernameCodeRequested(true);
+                            Alert.alert('Verification Sent', 'Enter the code sent to your email to confirm username change.');
+                          }}
+                        >
+                          <Text style={styles.verifyButtonText}>Request Code</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <TextInput
+                          style={[styles.textInput, { color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                          placeholder="Verification code"
+                          placeholderTextColor={theme.secondaryText}
+                          value={usernameCode}
+                          onChangeText={setUsernameCode}
+                          keyboardType="number-pad"
+                        />
+                        <TouchableOpacity
+                          style={styles.verifyButton}
+                          onPress={async () => {
+                            if (!usernameCode) { Alert.alert('Error', 'Enter the verification code'); return; }
+                            const r = await confirmUsernameChangeFlow(newUsername, usernameCode);
+                            if (!r?.success) { Alert.alert('Error', r?.message || 'Failed to change username'); return; }
+                            Alert.alert('Success', 'Username updated successfully');
+                            setShowUsernameChange(false);
+                            setUsernameCodeRequested(false);
+                            setNewUsername('');
+                            setUsernamePassword('');
+                            setUsernameCode('');
+                          }}
+                        >
+                          <Text style={styles.verifyButtonText}>Confirm Username Change</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                    <TouchableOpacity style={styles.cancelInlineButton} onPress={() => { setShowUsernameChange(false); setUsernameCodeRequested(false); }}>
+                      <Text style={styles.cancelInlineText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             ) : (
               <Text style={[styles.inputValue, { color: theme.text }]}>{user?.username || 'Not set'}</Text>
             )}
@@ -422,11 +510,97 @@ export default function Profile() {
           <View style={styles.inputContainer}>
             <Text style={[styles.inputLabel, { color: theme.secondaryText }]}>Email Address</Text>
             {isEditing ? (
-              <TextInput
-                style={[styles.textInput, { color: theme.text, borderColor: theme.border, backgroundColor: '#f3f4f6' }]}
-                value={editedEmail}
-                editable={false}
-              />
+              <View>
+                <TextInput
+                  style={[styles.textInput, { color: theme.text, borderColor: theme.border, backgroundColor: '#f3f4f6' }]}
+                  value={editedEmail}
+                  editable={false}
+                />
+                {!showEmailChange ? (
+                  <TouchableOpacity style={styles.linkButton} onPress={() => { setShowEmailChange(true); setNewEmail(''); setConfirmNewEmail(''); setEmailPassword(''); setEmailCode(''); setEmailCodeRequested(false); }}>
+                    <Text style={styles.linkButtonText}>Change Email (verification required)</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={{ marginTop: 8 }}>
+                    {!emailCodeRequested ? (
+                      <>
+                        <TextInput
+                          style={[styles.textInput, { color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                          placeholder="New email"
+                          placeholderTextColor={theme.secondaryText}
+                          value={newEmail}
+                          onChangeText={setNewEmail}
+                          autoCapitalize="none"
+                          keyboardType="email-address"
+                        />
+                        <TextInput
+                          style={[styles.textInput, { color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                          placeholder="Confirm new email"
+                          placeholderTextColor={theme.secondaryText}
+                          value={confirmNewEmail}
+                          onChangeText={setConfirmNewEmail}
+                          autoCapitalize="none"
+                          keyboardType="email-address"
+                        />
+                        <TextInput
+                          style={[styles.textInput, { color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                          placeholder="Current password"
+                          placeholderTextColor={theme.secondaryText}
+                          value={emailPassword}
+                          onChangeText={setEmailPassword}
+                          secureTextEntry
+                        />
+                        <TouchableOpacity
+                          style={styles.verifyButton}
+                          onPress={async () => {
+                            const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+                            if (!re.test(String(newEmail).trim())) { Alert.alert('Error', 'Enter a valid email'); return; }
+                            if (newEmail !== confirmNewEmail) { Alert.alert('Error', 'Emails do not match'); return; }
+                            if (!emailPassword) { Alert.alert('Error', 'Enter your current password'); return; }
+                            const resp = await requestEmailChangeFlow(newEmail, emailPassword);
+                            if (!resp?.success) { Alert.alert('Error', resp?.message || 'Failed to send code'); return; }
+                            setEmailCodeRequested(true);
+                            Alert.alert('Verification Sent', 'We sent a code to your new email. Enter it below to confirm.');
+                          }}
+                        >
+                          <Text style={styles.verifyButtonText}>Request Code</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <TextInput
+                          style={[styles.textInput, { color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                          placeholder="Verification code"
+                          placeholderTextColor={theme.secondaryText}
+                          value={emailCode}
+                          onChangeText={setEmailCode}
+                          keyboardType="number-pad"
+                        />
+                        <TouchableOpacity
+                          style={styles.verifyButton}
+                          onPress={async () => {
+                            if (!emailCode) { Alert.alert('Error', 'Enter the verification code'); return; }
+                            const r = await confirmEmailChangeFlow(newEmail, emailCode);
+                            if (!r?.success) { Alert.alert('Error', r?.message || 'Failed to change email'); return; }
+                            Alert.alert('Success', 'Email updated successfully');
+                            setShowEmailChange(false);
+                            setEmailCodeRequested(false);
+                            setNewEmail('');
+                            setConfirmNewEmail('');
+                            setEmailPassword('');
+                            setEmailCode('');
+                          }}
+                        >
+                          <Text style={styles.verifyButtonText}>Confirm Email Change</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                    <TouchableOpacity style={styles.cancelInlineButton} onPress={() => { setShowEmailChange(false); setEmailCodeRequested(false); }}>
+                      <Text style={styles.cancelInlineText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             ) : (
               <Text style={[styles.inputValue, { color: theme.text }]}>{user?.email || 'Not set'}</Text>
             )}
@@ -910,6 +1084,26 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
+  },
+
+  // Inline sensitive change UI helper styles
+  linkButton: {
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  linkButtonText: {
+    color: '#3b82f6',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  cancelInlineButton: {
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  cancelInlineText: {
+    color: '#ef4444',
+    fontSize: 13,
+    fontWeight: '500',
   },
 
   // Settings Styles

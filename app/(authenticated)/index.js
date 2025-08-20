@@ -1,7 +1,8 @@
 
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import { ScrollView, Text, TouchableOpacity, View, Image } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import Avatar from '../../components/Avatar';
 import BottomNavBar from '../../components/BottomNavBar';
 import ClassCard from '../../components/ClassCard';
 import styles from '../../styles/IndexStyles';
@@ -62,13 +63,7 @@ export default function Index() {
             </View>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.profileContainer}>
-            {user?.profileImage ? (
-              <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
-            ) : (
-              <View style={[styles.initialsContainer, { backgroundColor: theme.primary || '#007bff' }]}>
-                <Text style={styles.initialsText}>{getInitials(user?.fullName || user?.name)}</Text>
-              </View>
-            )}
+            <Avatar size={32} borderColor={theme.primary || '#007bff'} />
           </TouchableOpacity>
         </View>
       </View>

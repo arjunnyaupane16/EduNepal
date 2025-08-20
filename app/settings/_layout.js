@@ -6,6 +6,7 @@ export default function SettingsStackLayout() {
     <Stack screenOptions={{ headerShown: true }}>
       {/* Hide header on the main settings screen so only bottom navbar shows */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="AccountSecurity" options={{ title: 'Account Security' }} />
       <Stack.Screen name="AdminDashboard" options={{ title: 'Admin Dashboard' }} />
       <Stack.Screen name="SystemNotifications" options={{ title: 'System Notifications' }} />
       <Stack.Screen name="SystemLogs" options={{ title: 'System Logs' }} />

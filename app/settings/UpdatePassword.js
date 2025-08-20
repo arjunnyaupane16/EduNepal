@@ -4,15 +4,19 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert 
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function UpdatePassword() {
   const { t } = useLanguage();
   const { theme } = useTheme();
+  const { requestVerificationCode, changePasswordWithVerification } = useAuth();
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [codeRequested, setCodeRequested] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -58,18 +62,38 @@ export default function UpdatePassword() {
     }
 
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      Alert.alert('Success', 'Password updated successfully!', [
-        { text: 'OK', onPress: () => {
-          setCurrentPassword('');
-          setNewPassword('');
-          setConfirmPassword('');
-        }}
-      ]);
-    }, 2000);
+    // Step 1: request a verification code to current email
+    const resp = await requestVerificationCode('change_password');
+    setLoading(false);
+    if (!resp?.success) {
+      Alert.alert('Error', resp?.message || 'Failed to send verification code');
+      return;
+    }
+    setCodeRequested(true);
+    Alert.alert('Verification Required', 'We sent a verification code to your email. Enter it below to confirm the password change.');
+  };
+
+  const handleConfirmChange = async () => {
+    if (!verificationCode || verificationCode.length < 4) {
+      Alert.alert('Error', 'Enter the verification code');
+      return;
+    }
+    setLoading(true);
+    const r = await changePasswordWithVerification(newPassword, verificationCode);
+    setLoading(false);
+    if (!r?.success) {
+      Alert.alert('Error', r?.message || 'Failed to update password');
+      return;
+    }
+    Alert.alert('Success', 'Password updated successfully!', [
+      { text: 'OK', onPress: () => {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setVerificationCode('');
+        setCodeRequested(false);
+      }}
+    ]);
   };
 
   const PasswordRequirement = ({ met, text }) => (
@@ -190,20 +214,53 @@ export default function UpdatePassword() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.updateButton, { opacity: loading ? 0.7 : 1 }]}
-          onPress={handleUpdatePassword}
-          disabled={loading}
-        >
-          {loading ? (
-            <Text style={styles.buttonText}>Updating...</Text>
-          ) : (
-            <>
-              <Ionicons name="shield-checkmark" size={20} color="#fff" />
-              <Text style={styles.buttonText}>Update Password</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {!codeRequested ? (
+          <TouchableOpacity
+            style={[styles.updateButton, { opacity: loading ? 0.7 : 1 }]}
+            onPress={handleUpdatePassword}
+            disabled={loading}
+          >
+            {loading ? (
+              <Text style={styles.buttonText}>Sending Code...</Text>
+            ) : (
+              <>
+                <Ionicons name="shield-checkmark" size={20} color="#fff" />
+                <Text style={styles.buttonText}>Request Verification Code</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.text }]}>Verification Code *</Text>
+              <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                <Ionicons name="key" size={20} color={theme.placeholder} />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Enter the code from your email"
+                  placeholderTextColor={theme.placeholder}
+                  value={verificationCode}
+                  onChangeText={setVerificationCode}
+                  keyboardType="number-pad"
+                />
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.updateButton, { opacity: loading ? 0.7 : 1 }]}
+              onPress={handleConfirmChange}
+              disabled={loading}
+            >
+              {loading ? (
+                <Text style={styles.buttonText}>Updating...</Text>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                  <Text style={styles.buttonText}>Confirm Password Change</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </ScrollView>
   );

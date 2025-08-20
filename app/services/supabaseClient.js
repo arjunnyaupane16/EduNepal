@@ -3,8 +3,15 @@ import 'react-native-get-random-values';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = Constants?.expoConfig?.extra?.supabaseUrl || '';
-const SUPABASE_ANON_KEY = Constants?.expoConfig?.extra?.supabaseAnonKey || '';
+// Prefer Expo public env vars on web/static builds, fallback to app.json extras
+const SUPABASE_URL =
+  process.env.EXPO_PUBLIC_SUPABASE_URL ||
+  Constants?.expoConfig?.extra?.supabaseUrl ||
+  '';
+const SUPABASE_ANON_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  Constants?.expoConfig?.extra?.supabaseAnonKey ||
+  '';
 
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
@@ -15,6 +22,9 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
       detectSessionInUrl: false,
     }
   });
+} else {
+  // Helpful warning to diagnose missing config on web
+  console.warn('[Supabase] Missing SUPABASE_URL or SUPABASE_ANON_KEY. Set EXPO_PUBLIC_SUPABASE_URL/EXPO_PUBLIC_SUPABASE_ANON_KEY or add to app.json extra.');
 }
 
 export const getSupabase = () => supabase;
