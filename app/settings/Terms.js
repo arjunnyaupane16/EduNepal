@@ -10,63 +10,62 @@ export default function Terms() {
 
   const sections = [
     {
-      title: 'Acceptance of Terms',
-      content: 'By accessing and using EduNepal, you accept and agree to be bound by the terms and provision of this agreement.',
+      title: t('termsAcceptanceTitle'),
+      content: t('termsAcceptanceContent'),
     },
     {
-      title: 'Use License',
-      content: 'Permission is granted to temporarily access EduNepal for personal, non-commercial transitory viewing only.',
+      title: t('termsUseLicenseTitle'),
+      content: t('termsUseLicenseContent'),
     },
     {
-      title: 'User Account',
-      content: 'You are responsible for safeguarding your account credentials and for all activities that occur under your account.',
+      title: t('termsUserAccountTitle'),
+      content: t('termsUserAccountContent'),
     },
     {
-      title: 'Prohibited Uses',
-      content: 'You may not use our service for any illegal or unauthorized purpose or to violate any laws in your jurisdiction.',
+      title: t('termsProhibitedUsesTitle'),
+      content: t('termsProhibitedUsesContent'),
     },
     {
-      title: 'Content',
-      content: 'Our service allows you to access educational content. You are responsible for your use of the content and must respect intellectual property rights.',
+      title: t('termsContentTitle'),
+      content: t('termsContentContent'),
     },
     {
-      title: 'Privacy Policy',
-      content: 'Your privacy is important to us. Please review our Privacy Policy, which also governs your use of the service.',
+      title: t('termsPrivacyPolicyTitle'),
+      content: t('termsPrivacyPolicyContent'),
     },
     {
-      title: 'Termination',
-      content: 'We may terminate or suspend your account and access to the service immediately, without prior notice, for conduct that we believe violates these Terms.',
+      title: t('termsTerminationTitle'),
+      content: t('termsTerminationContent'),
     },
     {
-      title: 'Changes to Terms',
-      content: 'We reserve the right to modify these terms at any time. We will notify users of any material changes.',
+      title: t('termsChangesTitle'),
+      content: t('termsChangesContent'),
     },
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}> 
       <View style={styles.header}>
-        <Ionicons name="document-text" size={60} color="#3b82f6" />
-        <Text style={[styles.title, { color: theme.text }]}>Terms & Conditions</Text>
-        <Text style={[styles.subtitle, { color: theme.text }]}>Last updated: January 2024</Text>
+        <Ionicons name="document-text" size={60} color={theme.primary} />
+        <Text style={[styles.title, { color: theme.text }]}>{t('termsConditions')}</Text>
+        <Text style={[styles.subtitle, { color: theme.text }]}>{t('termsUpdated')}</Text>
       </View>
 
       <View style={styles.content}>
-        <Text style={[styles.intro, { color: theme.text }]}>
-          Please read these Terms and Conditions carefully before using EduNepal. 
-          These terms govern your use of our educational platform and services.
+        <Text style={[styles.intro, { color: theme.text }]}> 
+          {t('termsIntro')}
         </Text>
 
         {sections.map((section, index) => (
-          <View key={index} style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
+          <View key={index} style={[styles.section, { backgroundColor: theme.card }]}> 
             <Text style={[styles.sectionTitle, { color: theme.text }]}>{section.title}</Text>
             <Text style={[styles.sectionContent, { color: theme.text }]}>{section.content}</Text>
           </View>
         ))}
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.text }]}>
-            If you have any questions about these Terms and Conditions, please contact us at legal@edunepal.com
+          <Text style={[styles.footerText, { color: theme.text }]}> 
+            {t('termsQuestionsFooter')}
           </Text>
         </View>
       </View>

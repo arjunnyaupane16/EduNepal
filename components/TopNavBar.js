@@ -5,12 +5,15 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import Avatar from './Avatar';
 import { useAuth } from '../app/context/AuthContext';
 import { useTheme } from '../app/context/ThemeContext';
+import { useLanguage } from '../app/context/LanguageContext';
 
-export default function TopNavBar({ title = "EduNepal", showMenu = true, showNotifications = true }) {
+export default function TopNavBar({ title, showMenu = true, showNotifications = true }) {
   const navigation = useNavigation();
   const router = useRouter();
   const { theme } = useTheme();
   const { user, isLoggedIn } = useAuth();
+  const { t } = useLanguage();
+  const resolvedTitle = title ?? t('eduNepal');
 
   // Debug logging
   console.log('TopNavBar - User:', user);
@@ -38,7 +41,7 @@ export default function TopNavBar({ title = "EduNepal", showMenu = true, showNot
         </TouchableOpacity>
       )}
       
-      <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+      <Text style={[styles.title, { color: theme.text }]}>{resolvedTitle}</Text>
       
       <View style={styles.topRightIcons}>
         {showNotifications && (

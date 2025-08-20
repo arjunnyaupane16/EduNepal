@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configure how notifications are handled when app is foregrounded
 Notifications.setNotificationHandler({
@@ -13,8 +14,25 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Use server URL from app config if provided (better for physical devices)
-const SERVER_URL = Constants?.expoConfig?.extra?.serverUrl ?? 'http://localhost:4000';
+// Server URL helpers
+const SERVER_URL_KEY = 'serverUrl';
+export async function getServerUrl() {
+  // 1) User-saved value
+  try {
+    const saved = await AsyncStorage.getItem(SERVER_URL_KEY);
+    if (saved) return saved;
+  } catch {}
+  // 2) App config
+  const fromConfig = Constants?.expoConfig?.extra?.serverUrl;
+  if (fromConfig) return fromConfig;
+  // 3) Default
+  return 'http://localhost:4000';
+}
+
+export async function saveServerUrl(url) {
+  if (!url) return;
+  await AsyncStorage.setItem(SERVER_URL_KEY, url);
+}
 
 export async function registerForPushNotificationsAsync() {
   try {
@@ -58,9 +76,10 @@ export async function registerForPushNotificationsAsync() {
     const token = tokenResponse.data;
     console.log('Expo push token:', token);
 
-    // Register token to your server
+    // Register token to your server using resolved URL
     try {
-      await fetch(`${SERVER_URL}/register-token`, {
+      const base = await getServerUrl();
+      await fetch(`${base}/register-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),

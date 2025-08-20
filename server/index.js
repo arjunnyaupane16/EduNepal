@@ -59,6 +59,37 @@ async function sendEmail(to, subject, text) {
   }
 }
 
+// Shared helper: send a broadcast to all registered recipients NOW
+async function sendBroadcastNow({ title = 'EduNepal', message }) {
+  if (!message) throw new Error('message is required');
+  // Push broadcast
+  if (tokens.size > 0) {
+    const messages = [];
+    for (const token of tokens) {
+      messages.push({ to: token, sound: 'default', title, body: message, data: { type: 'system' } });
+    }
+    const chunks = expo.chunkPushNotifications(messages);
+    for (const chunk of chunks) {
+      await expo.sendPushNotificationsAsync(chunk);
+    }
+  }
+  // Email broadcast (fallback)
+  if (mailer && emails.size > 0) {
+    const list = Array.from(emails);
+    const MAX_BCC = 50;
+    for (let i = 0; i < list.length; i += MAX_BCC) {
+      const batch = list.slice(i, i + MAX_BCC);
+      await mailer.sendMail({
+        from: process.env.FROM_EMAIL,
+        to: process.env.FROM_EMAIL,
+        bcc: batch.join(','),
+        subject: title,
+        text: message,
+      });
+    }
+  }
+}
+
 // Issue a verification code for a purpose: change_password | change_email | delete_account
 app.post('/auth/send-code', async (req, res) => {
   try {
@@ -155,6 +186,79 @@ app.post('/broadcast-random', async (req, res) => {
   return res.json({ ok: true, tokens: tokenCount, emails: emailCount, scheduledInSeconds: delaySeconds, scheduledAt });
 });
 
-app.get('/', (_req, res) => res.send('EduNepal Push Server running'));
+// Send a broadcast immediately
+// Body: { title?: string, message: string }
+app.post('/broadcast-now', async (req, res) => {
+  try {
+    const { title = 'EduNepal', message } = req.body || {};
+    if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
+    await sendBroadcastNow({ title, message });
+    return res.json({ ok: true, tokens: tokens.size, emails: emails.size, sentAt: new Date().toISOString() });
+  } catch (err) {
+    console.error('broadcast-now error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
 
+// Daily scheduler (simple in-memory timer). Body: { title?: string, message: string, hour: number, minute?: number }
+let dailyTimer = null;
+let dailyTime = null; // HH:MM string for info
+app.post('/schedule-daily', (req, res) => {
+  try {
+    const { title = 'EduNepal', message, hour, minute = 0 } = req.body || {};
+    if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
+    const h = Number(hour);
+    const m = Number(minute);
+    if (!Number.isFinite(h) || h < 0 || h > 23) return res.status(400).json({ ok: false, error: 'invalid hour' });
+    if (!Number.isFinite(m) || m < 0 || m > 59) return res.status(400).json({ ok: false, error: 'invalid minute' });
+
+    // Clear previous
+    if (dailyTimer) {
+      clearTimeout(dailyTimer);
+      dailyTimer = null;
+    }
+
+    // Compute first run time
+    const now = new Date();
+    const first = new Date();
+    first.setHours(h, m, 0, 0);
+    if (first <= now) first.setDate(first.getDate() + 1); // schedule for tomorrow if time already passed
+    const initialDelay = first.getTime() - now.getTime();
+    dailyTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+    const scheduleNext = () => {
+      dailyTimer = setTimeout(async () => {
+        try {
+          await sendBroadcastNow({ title, message });
+        } catch (e) {
+          console.error('daily send error:', e);
+        } finally {
+          // schedule next day
+          scheduleNext();
+        }
+      }, 24 * 60 * 60 * 1000);
+    };
+
+    // Start initial delay, then schedule every 24h via recursive setTimeout
+    setTimeout(async () => {
+      try {
+        await sendBroadcastNow({ title, message });
+      } catch (e) {
+        console.error('daily first send error:', e);
+      } finally {
+        scheduleNext();
+      }
+    }, initialDelay);
+
+    return res.json({ ok: true, firstRunAt: first.toISOString(), time: dailyTime });
+  } catch (err) {
+    console.error('schedule-daily error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+app.get('/', (_req, res) => res.send('EduNepal Push Server running'));
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
 app.listen(PORT, () => console.log(`Push server listening on http://localhost:${PORT}`));

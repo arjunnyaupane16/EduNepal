@@ -11,36 +11,36 @@ export default function Contact() {
   const contactMethods = [
     {
       icon: 'mail',
-      title: 'Email Support',
-      subtitle: 'support@edunepal.com',
-      action: () => Linking.openURL('mailto:support@edunepal.com'),
+      title: t('emailSupport'),
+      subtitle: 'elearnnep@16gmail.com',
+      action: () => Linking.openURL('mailto:elearnnep@16gmail.com'),
     },
     {
       icon: 'call',
-      title: 'Phone Support',
-      subtitle: '+977-1-4567890',
-      action: () => Linking.openURL('tel:+97714567890'),
+      title: t('phoneSupport'),
+      subtitle: '+977-9864158297',
+      action: () => Linking.openURL('tel:+9779864158297'),
     },
     {
       icon: 'location',
-      title: 'Office Address',
+      title: t('officeAddress'),
       subtitle: 'Kathmandu, Nepal',
       action: () => {},
     },
     {
       icon: 'globe',
-      title: 'Website',
-      subtitle: 'www.edunepal.com',
-      action: () => Linking.openURL('https://www.edunepal.com'),
+      title: t('visitWebsite'),
+      subtitle: 'www.elearn.com',
+      action: () => Linking.openURL('https://www.elearn.com'),
     },
   ];
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
-        <Ionicons name="people" size={60} color="#3b82f6" />
+        <Ionicons name="people" size={60} color={theme.primary} />
         <Text style={[styles.title, { color: theme.text }]}>{t('contactUs')}</Text>
-        <Text style={[styles.subtitle, { color: theme.text }]}>Get in touch with our support team</Text>
+        <Text style={[styles.subtitle, { color: theme.text }]}>{t('contactSubtitle')}</Text>
       </View>
 
       <View style={styles.contactList}>
@@ -51,20 +51,20 @@ export default function Contact() {
             onPress={method.action}
           >
             <View style={styles.iconContainer}>
-              <Ionicons name={method.icon} size={24} color="#3b82f6" />
+              <Ionicons name={method.icon} size={24} color={theme.primary} />
             </View>
             <View style={styles.contactInfo}>
               <Text style={[styles.contactTitle, { color: theme.text }]}>{method.title}</Text>
               <Text style={[styles.contactSubtitle, { color: theme.text }]}>{method.subtitle}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.text} />
+            <Ionicons name="chevron-forward" size={20} color={theme.secondaryText} />
           </TouchableOpacity>
         ))}
       </View>
 
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: theme.text }]}>
-          We're here to help! Reach out to us anytime for support, feedback, or questions about EduNepal.
+          {t('contactFooter')}
         </Text>
       </View>
     </ScrollView>

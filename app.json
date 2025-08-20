@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "EduNepal",
-    "slug": "EduNepal",
+    "name": "elearn Nep",
+    "slug": "elearn-nep",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "edunepal",
+    "scheme": "elearnnep",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "extra": {
@@ -17,9 +17,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow EduNepal to access the camera to take profile photos.",
-        "NSPhotoLibraryUsageDescription": "Allow EduNepal to access your photo library to choose a profile photo.",
-        "NSPhotoLibraryAddUsageDescription": "Allow EduNepal to save images to your photo library."
+        "NSCameraUsageDescription": "Allow elearn Nep to access the camera to take profile photos.",
+        "NSPhotoLibraryUsageDescription": "Allow elearn Nep to access your photo library to choose a profile photo.",
+        "NSPhotoLibraryAddUsageDescription": "Allow elearn Nep to save images to your photo library."
       }
     },
     "android": {

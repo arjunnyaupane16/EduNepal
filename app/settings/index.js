@@ -146,7 +146,7 @@ export default function SettingsScreen() {
         <Section title={t('helpSupport')}>
           <SettingsItem icon="help-outline" label="FAQs" onPress={() => router.push('/settings/HelpSupport')} theme={theme} />
           <SettingsItem icon="support-agent" label={t('contactUs')} onPress={() => router.push('/settings/Contact')} theme={theme} />
-          <SettingsItem icon="menu-book" label="User Guides" theme={theme} />
+          <SettingsItem icon="menu-book" label="User Guides" onPress={() => router.push('/settings/UserGuides')} theme={theme} />
           {/* Admin-only System Logs moved inside Admin Dashboard */}
         </Section>
 

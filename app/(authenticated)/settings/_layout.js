@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function SettingsLayout() {
+  const { t } = useLanguage();
   return (
     <Stack>
       <Stack.Screen 
@@ -12,7 +14,7 @@ export default function SettingsLayout() {
       <Stack.Screen 
         name="DeleteAccount" 
         options={{
-          title: 'Delete Account',
+          title: t('deleteAccount'),
           presentation: 'modal',
         }}
       />
