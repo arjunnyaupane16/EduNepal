@@ -1,6 +1,9 @@
 import { StyleSheet, Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
+const H_PADDING = 16; // matches content horizontal padding
+const GRID_GAP = 16;  // gap between grid items
+const CARD_WIDTH = (width - (H_PADDING * 2) - GRID_GAP) / 2;
 
 export default StyleSheet.create({
   container: {
@@ -81,8 +84,8 @@ export default StyleSheet.create({
   },
 
   content: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: H_PADDING,
+    paddingBottom: 28,
   },
 
   classTitle: {
@@ -98,36 +101,36 @@ export default StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: GRID_GAP,
   },
 
   card: {
-    width: (width - 48) / 2,
+    width: CARD_WIDTH,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: GRID_GAP,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 10,
+    elevation: 4,
     borderWidth: 1,
     borderColor: '#f1f5f9',
   },
 
   iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
 
   title: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#1e293b',
     marginBottom: 6,
     lineHeight: 22,
@@ -137,7 +140,7 @@ export default StyleSheet.create({
     fontSize: 13,
     color: '#64748b',
     lineHeight: 18,
-    marginBottom: 8,
+    marginBottom: 10,
   },
 
   arrow: {
@@ -145,16 +148,16 @@ export default StyleSheet.create({
     bottom: 16,
     right: 16,
     backgroundColor: '#f1f5f9',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   recentActivityHeader: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 24,
     marginBottom: 16,
     color: '#1e293b',

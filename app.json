@@ -2,7 +2,7 @@
   "expo": {
     "name": "elearn Nep",
     "slug": "elearn-nep",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "elearnnep",
@@ -12,7 +12,7 @@
       "serverUrl": "http://30.30.4.15:4000",
       "supabaseUrl": "https://eovzqcjgqmlaubzwwqpx.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdnpxY2pncW1sYXViend3cXB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MDQ5NTcsImV4cCI6MjA2OTE4MDk1N30.SrjN2KDWZD7vCtqF54H8OUmgo6LKfUALEpD2LFjKU5c",
-      "storageBucket": "ArjunNyaupane"
+      "storageBucket": "ElearnNepal"
     },
     "ios": {
       "supportsTablet": true,

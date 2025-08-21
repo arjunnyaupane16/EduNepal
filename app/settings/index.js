@@ -1,6 +1,7 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
+import { useState } from 'react';
 import Avatar from '../../components/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -33,6 +34,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     elevation: 2,
+  },
+  searchWrap: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 16,
+    elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: 8
   },
   textWrap: { flex: 1, marginLeft: 12 },
   label: { fontSize: 16, fontWeight: '600' },
@@ -76,6 +92,7 @@ export default function SettingsScreen() {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const { user, logout } = useAuth();
+  const [query, setQuery] = useState('');
 
   const getInitials = (fullName) => {
     if (!fullName) return 'U';
@@ -90,6 +107,49 @@ export default function SettingsScreen() {
     logout();
     router.replace('/login');
   };
+
+  // Flat list of all searchable items with their navigation handlers
+  const allItems = [
+    // Admin Controls
+    { icon: 'dashboard', label: 'Admin Dashboard', subLabel: 'Manage users, content, and system', route: '/settings/AdminDashboard', adminOnly: true, keywords: ['admin', 'users', 'content', 'system', 'management', 'tools', 'logs', 'developer'] },
+
+    // Account Security
+    { icon: 'lock', label: 'Change Password', subLabel: 'Update your account security settings', route: '/settings/UpdatePassword', keywords: ['password', 'update', 'security', 'login', 'credential'] },
+    { icon: 'alternate-email', label: 'Update Email Address', subLabel: 'Change your email', route: '/settings/UpdateEmail', keywords: ['email', 'address', 'change'] },
+    { icon: 'person-remove', label: 'Delete Account', subLabel: 'Permanently delete your account', route: '/settings/DeleteAccount', keywords: ['delete', 'remove', 'account', 'danger', 'permanent'] },
+
+    // Privacy & Data
+    { icon: 'privacy-tip', label: 'Privacy Dashboard', route: '/settings/PrivacySettings', keywords: ['privacy', 'data', 'permissions', 'policy'] },
+    { icon: 'gavel', label: t('termsConditions'), route: '/settings/Terms', keywords: ['terms', 'conditions', 'agreement'] },
+
+    // Notifications
+    { icon: 'notifications-active', label: 'Notification Settings', subLabel: 'Manage all notification preferences', route: '/settings/NotificationSettings', keywords: ['notification', 'alerts', 'push', 'sound'] },
+
+    // Preferences
+    { icon: 'translate', label: t('language'), subLabel: 'Choose your preferred language', route: '/settings/LanguageRegion', keywords: ['language', 'translate', 'locale', 'nepali', 'english'] },
+    { icon: 'public', label: 'Content Region', subLabel: 'Nepal', route: '/settings/RegionSettings', keywords: ['region', 'country', 'location', 'nepal'] },
+    { icon: 'palette', label: 'Theme Settings', subLabel: 'Light, Dark, or others', route: '/theme', keywords: ['theme', 'dark', 'light', 'others', 'appearance'] },
+
+    // Help & Support
+    { icon: 'help-outline', label: 'FAQs', route: '/settings/HelpSupport', keywords: ['faq', 'help', 'question', 'support'] },
+    { icon: 'support-agent', label: t('contactUs'), route: '/settings/Contact', keywords: ['contact', 'email', 'phone', 'support'] },
+    { icon: 'menu-book', label: 'User Guides', route: '/settings/UserGuides', keywords: ['guide', 'manual', 'how to', 'tutorial'] },
+
+    // About
+    { icon: 'info', label: 'Application Version', subLabel: '1.2.3', route: '/settings/AboutApp', keywords: ['about', 'version', 'app', 'build'] },
+    { icon: 'security', label: 'Privacy Policy', route: '/settings/PrivacyPolicy', keywords: ['privacy', 'policy', 'data'] },
+  ].filter((it) => (isAdmin ? true : !it.adminOnly));
+
+  const filtered = query.trim().length
+    ? allItems.filter((it) => {
+        const q = query.toLowerCase();
+        return (
+          it.label?.toLowerCase().includes(q) ||
+          it.subLabel?.toLowerCase().includes(q) ||
+          (Array.isArray(it.keywords) && it.keywords.join(' ').toLowerCase().includes(q))
+        );
+      })
+    : [];
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -109,58 +169,94 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Admin Only Sections */}
-        {isAdmin && (
+        {/* Search Bar */}
+        <View style={[styles.searchWrap, { backgroundColor: theme.cardBackground }]}>
+          <Ionicons name="search" size={18} color={theme.secondaryText} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search settings..."
+            placeholderTextColor={theme.secondaryText}
+            style={[styles.searchInput, { color: theme.text }]}
+            autoCorrect={false}
+            autoCapitalize="none"
+            clearButtonMode="while-editing"
+          />
+        </View>
+
+        {query.trim().length > 0 ? (
+          <Section title="Search Results">
+            {filtered.length > 0 ? (
+              filtered.map((it) => (
+                <SettingsItem
+                  key={`${it.route}`}
+                  icon={it.icon}
+                  label={it.label}
+                  subLabel={it.subLabel}
+                  onPress={() => router.push(it.route)}
+                  theme={theme}
+                />
+              ))
+            ) : (
+              <Text style={{ color: theme.secondaryText, marginBottom: 8 }}>No matches found</Text>
+            )}
+          </Section>
+        ) : (
           <>
-            <Section title="Admin Controls">
-              <SettingsItem icon="dashboard" label="Admin Dashboard" subLabel="Manage users, content, and system" onPress={() => router.push('/settings/AdminDashboard')} theme={theme} />
+            {/* Admin Only Sections */}
+            {isAdmin && (
+              <>
+                <Section title="Admin Controls">
+                  <SettingsItem icon="dashboard" label="Admin Dashboard" subLabel="Manage users, content, and system" onPress={() => router.push('/settings/AdminDashboard')} theme={theme} />
+                </Section>
+
+                {/* System Settings moved under Admin Dashboard */}
+              </>
+            )}
+
+            <Section title="Account Security">
+              <SettingsItem icon="lock" label="Change Password" subLabel="Update your account security settings" onPress={() => router.push('/settings/UpdatePassword')} theme={theme} />
+              <SettingsItem icon="alternate-email" label="Update Email Address" subLabel="Change your email" onPress={() => router.push('/settings/UpdateEmail')} theme={theme} />
+              <SettingsItem icon="person-remove" label="Delete Account" subLabel="Permanently delete your account" onPress={() => router.push('/settings/DeleteAccount')} theme={theme} />
             </Section>
 
-            {/* System Settings moved under Admin Dashboard */}
+            <Section title="Privacy & Data">
+              <SettingsItem icon="privacy-tip" label="Privacy Dashboard" onPress={() => router.push('/settings/PrivacySettings')} theme={theme} />
+              <SettingsItem icon="gavel" label={t('termsConditions')} onPress={() => router.push('/settings/Terms')} theme={theme} />
+            </Section>
+
+            <Section title="Notifications">
+              <SettingsItem icon="notifications-active" label="Notification Settings" subLabel="Manage all notification preferences" onPress={() => router.push('/settings/NotificationSettings')} theme={theme} />
+              {/* Admin-only system tools moved inside Admin Dashboard */}
+            </Section>
+
+            <Section title="Preferences">
+              <SettingsItem icon="translate" label={t('language')} subLabel="Choose your preferred language" onPress={() => router.push('/settings/LanguageRegion')} theme={theme} />
+              <SettingsItem icon="public" label="Content Region" subLabel="Nepal" onPress={() => router.push('/settings/RegionSettings')} theme={theme} />
+              <SettingsItem icon="palette" label="Theme Settings" subLabel="Light, Dark, or Auto" onPress={() => router.push('/theme')} theme={theme} />
+            </Section>
+
+            <Section title={t('helpSupport')}>
+              <SettingsItem icon="help-outline" label="FAQs" onPress={() => router.push('/settings/HelpSupport')} theme={theme} />
+              <SettingsItem icon="support-agent" label={t('contactUs')} onPress={() => router.push('/settings/Contact')} theme={theme} />
+              <SettingsItem icon="menu-book" label="User Guides" onPress={() => router.push('/settings/UserGuides')} theme={theme} />
+              {/* Admin-only System Logs moved inside Admin Dashboard */}
+            </Section>
+
+            <Section title="About">
+              <SettingsItem icon="info" label="Application Version" subLabel="1.2.3" onPress={() => router.push('/settings/AboutApp')} theme={theme} />
+              <SettingsItem icon="security" label="Privacy Policy" onPress={() => router.push('/settings/PrivacyPolicy')} theme={theme} />
+              {/* Admin-only Developer Tools moved inside Admin Dashboard */}
+            </Section>
+
+            <Section title="Account Actions">
+              <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: theme.primary }]} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={18} color="#fff" />
+                <Text style={styles.logoutText}>{t('logout')}</Text>
+              </TouchableOpacity>
+            </Section>
           </>
         )}
-
-        <Section title="Account Security">
-          <SettingsItem icon="lock" label="Change Password" subLabel="Update your account security settings" onPress={() => router.push('/settings/UpdatePassword')} theme={theme} />
-          <SettingsItem icon="alternate-email" label="Update Email Address" subLabel="Change your email" onPress={() => router.push('/settings/UpdateEmail')} theme={theme} />
-          <SettingsItem icon="person-remove" label="Delete Account" subLabel="Permanently delete your account" onPress={() => router.push('/settings/DeleteAccount')} theme={theme} />
-        </Section>
-
-        <Section title="Privacy & Data">
-          <SettingsItem icon="privacy-tip" label="Privacy Dashboard" onPress={() => router.push('/settings/PrivacySettings')} theme={theme} />
-          <SettingsItem icon="gavel" label={t('termsConditions')} onPress={() => router.push('/settings/Terms')} theme={theme} />
-        </Section>
-
-        <Section title="Notifications">
-          <SettingsItem icon="notifications-active" label="Notification Settings" subLabel="Manage all notification preferences" onPress={() => router.push('/settings/NotificationSettings')} theme={theme} />
-          {/* Admin-only system tools moved inside Admin Dashboard */}
-        </Section>
-
-        <Section title="Preferences">
-          <SettingsItem icon="translate" label={t('language')} subLabel="Choose your preferred language" onPress={() => router.push('/settings/LanguageRegion')} theme={theme} />
-          <SettingsItem icon="public" label="Content Region" subLabel="Nepal" onPress={() => router.push('/settings/RegionSettings')} theme={theme} />
-          <SettingsItem icon="palette" label="Theme Settings" subLabel="Light, Dark, or Auto" onPress={() => router.push('/theme')} theme={theme} />
-        </Section>
-
-        <Section title={t('helpSupport')}>
-          <SettingsItem icon="help-outline" label="FAQs" onPress={() => router.push('/settings/HelpSupport')} theme={theme} />
-          <SettingsItem icon="support-agent" label={t('contactUs')} onPress={() => router.push('/settings/Contact')} theme={theme} />
-          <SettingsItem icon="menu-book" label="User Guides" onPress={() => router.push('/settings/UserGuides')} theme={theme} />
-          {/* Admin-only System Logs moved inside Admin Dashboard */}
-        </Section>
-
-        <Section title="About">
-          <SettingsItem icon="info" label="Application Version" subLabel="1.0.0" onPress={() => router.push('/settings/AboutApp')} theme={theme} />
-          <SettingsItem icon="security" label="Privacy Policy" onPress={() => router.push('/settings/PrivacyPolicy')} theme={theme} />
-          {/* Admin-only Developer Tools moved inside Admin Dashboard */}
-        </Section>
-
-        <Section title="Account Actions">
-          <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: theme.primary }]} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={styles.logoutText}>{t('logout')}</Text>
-          </TouchableOpacity>
-        </Section>
       </ScrollView>
     </View>
   );

@@ -32,12 +32,20 @@ export default function Class4() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
 
         <View style={styles.grid}>
           <TouchableOpacity
-            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            activeOpacity={0.85}
+            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: cardColors[0].icon, borderWidth: 2 }]}
             onPress={() => router.push('/classes/class4/textbook')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('textbooks')} - ${t('cdcApprovedBooks')}`}
           >
             <View style={[styles.iconWrapper, { backgroundColor: cardColors[0].bg }]}>
               <MaterialIcons name="menu-book" size={20} color={cardColors[0].icon} />
@@ -50,8 +58,11 @@ export default function Class4() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            activeOpacity={0.85}
+            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: cardColors[1].icon, borderWidth: 2 }]}
             onPress={() => router.push('/classes/class4/guidebooks')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('guidebooks')} - ${t('chapterWiseNotes')}`}
           >
             <View style={[styles.iconWrapper, { backgroundColor: cardColors[1].bg }]}>
               <MaterialIcons name="book-online" size={20} color={cardColors[1].icon} />
@@ -64,8 +75,11 @@ export default function Class4() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            activeOpacity={0.85}
+            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: cardColors[2].icon, borderWidth: 2 }]}
             onPress={() => router.push('/classes/class4/previouspapers')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('previousPapers')} - ${t('lastYearsExams')}`}
           >
             <View style={[styles.iconWrapper, { backgroundColor: cardColors[2].bg }]}>
               <MaterialIcons name="event-note" size={20} color={cardColors[2].icon} />
@@ -78,8 +92,11 @@ export default function Class4() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+            activeOpacity={0.85}
+            style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: cardColors[3].icon, borderWidth: 2 }]}
             onPress={() => router.push('/classes/class4/practicequestions')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('practiceQuestions')} - ${t('expectedQuestions')}`}
           >
             <View style={[styles.iconWrapper, { backgroundColor: cardColors[3].bg }]}>
               <MaterialIcons name="check-circle-outline" size={20} color={cardColors[3].icon} />

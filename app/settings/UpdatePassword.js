@@ -114,7 +114,7 @@ export default function UpdatePassword() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
-        <Ionicons name="lock-closed" size={60} color="#3b82f6" />
+        <Ionicons name="lock-closed" size={60} color={theme.primary} />
         <Text style={[styles.title, { color: theme.text }]}>Change Password</Text>
         <Text style={[styles.subtitle, { color: theme.text }]}>
           Update your account password for better security
@@ -207,16 +207,16 @@ export default function UpdatePassword() {
           )}
         </View>
 
-        <View style={[styles.securityTipBox, { backgroundColor: '#e0f2fe', borderColor: '#0ea5e9' }]}>
-          <Ionicons name="information-circle" size={20} color="#0ea5e9" />
-          <Text style={[styles.securityTipText, { color: '#0c4a6e' }]}>
+        <View style={[styles.securityTipBox, { backgroundColor: theme.searchBackground, borderColor: theme.border }]}>
+          <Ionicons name="information-circle" size={20} color={theme.secondary} />
+          <Text style={[styles.securityTipText, { color: theme.secondaryText }]}> 
             Use a strong password with a mix of letters, numbers, and symbols. Avoid using personal information.
           </Text>
         </View>
 
         {!codeRequested ? (
           <TouchableOpacity
-            style={[styles.updateButton, { opacity: loading ? 0.7 : 1 }]}
+            style={[styles.updateButton, { opacity: loading ? 0.7 : 1, backgroundColor: theme.primary }]}
             onPress={handleUpdatePassword}
             disabled={loading}
           >
@@ -246,7 +246,7 @@ export default function UpdatePassword() {
               </View>
             </View>
             <TouchableOpacity
-              style={[styles.updateButton, { opacity: loading ? 0.7 : 1 }]}
+              style={[styles.updateButton, { opacity: loading ? 0.7 : 1, backgroundColor: theme.primary }]}
               onPress={handleConfirmChange}
               disabled={loading}
             >
