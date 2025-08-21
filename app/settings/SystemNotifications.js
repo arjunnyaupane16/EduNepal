@@ -39,6 +39,7 @@ export default function SystemNotifications() {
   const [savingUrl, setSavingUrl] = useState(false);
   // Admin in-app (Supabase) notification
   const [audience, setAudience] = useState('all'); // e.g., 'all' | 'user:<id>' | 'segment:<id>'
+  const [category, setCategory] = useState('system'); // 'study' | 'content' | 'system' | 'marketing'
   const [sendingInApp, setSendingInApp] = useState(false);
 
   const isAdmin = user?.role === 'Administrator' || ['admin', '_arjunnn9y8a7u6pa4n3e2'].includes(user?.username);
@@ -158,7 +159,7 @@ export default function SystemNotifications() {
           title: title || 'EduNepal',
           body: message,
           audience,
-          data: { type: 'system', source: 'admin-ui' },
+          data: { type: category || 'system', source: 'admin-ui' },
           created_by: user?.id || null,
         })
       });
@@ -492,6 +493,18 @@ export default function SystemNotifications() {
       <View style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border || '#ddd', marginTop: 10 }]}> 
         <Text style={{ color: theme.text, fontWeight: '700', marginBottom: 6 }}>In-App Notification (Supabase)</Text>
         <Text style={{ color: theme.secondaryText, marginBottom: 6 }}>Audience: 'all' | 'user:&lt;id&gt;' | 'segment:&lt;id&gt;'</Text>
+        <Text style={{ color: theme.secondaryText, marginBottom: 6 }}>Category: study | content | system | marketing</Text>
+        <View style={[styles.row, { flexWrap: 'wrap', marginBottom: 8 }]}> 
+          {['study','content','system','marketing'].map((key) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.chip, category===key ? { backgroundColor: theme.primary } : { borderColor: theme.border || '#ddd' }]}
+              onPress={() => setCategory(key)}
+            >
+              <Text style={[styles.chipText, { color: category===key ? '#fff' : theme.text }]}>{key.toUpperCase()}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <TextInput
           style={[styles.input, { backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border || '#ddd' }]}
           placeholder="all or user:&lt;uuid&gt;"
@@ -529,7 +542,7 @@ export default function SystemNotifications() {
               return Alert.alert('Not supported on web', 'Immediate local preview is only available on iOS/Android.');
             }
             await Notifications.scheduleNotificationAsync({
-              content: { title: title || 'EduNepal', body: message, sound: 'default', data: { type: 'preview' } },
+              content: { title: title || 'EduNepal', body: message, sound: 'default', data: { type: category || 'system', source: 'preview' } },
               trigger: null, // immediate
             });
           } catch (e) {
@@ -769,30 +782,89 @@ export default function SystemNotifications() {
 }
 
 const styles = StyleSheet.create({
+  // Layout & typography
   container: { flex: 1 },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  subtitle: { fontSize: 13, marginBottom: 16 },
-  input: { borderWidth: 1, borderRadius: 12, padding: 14, minHeight: 56, lineHeight: 20, textAlignVertical: 'top', marginTop: 10 },
-  button: { marginTop: 16, padding: 14, borderRadius: 12, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: '700' },
-  buttonOutline: { marginTop: 10, padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
-  btnTextOutline: { fontWeight: '700' },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  timeBtn: { paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderRadius: 8 },
+  title: { fontSize: 20, fontWeight: '700', marginBottom: 8, letterSpacing: 0.2 },
+  subtitle: { fontSize: 13, marginBottom: 16, lineHeight: 18 },
+
+  // Inputs
+  input: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 48,
+    lineHeight: 20,
+    textAlignVertical: 'top',
+    marginTop: 10,
+  },
+
+  // Buttons
+  button: {
+    marginTop: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  btnText: { color: '#fff', fontWeight: '700', letterSpacing: 0.3 },
+  buttonOutline: {
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  btnTextOutline: { fontWeight: '700', letterSpacing: 0.3 },
   link: { marginTop: 16, alignItems: 'center' },
-  card: { borderWidth: 1, borderRadius: 12, padding: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3, marginTop: 16 },
+
+  // Rows & small controls
+  row: { flexDirection: 'row', alignItems: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  timeBtn: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderRadius: 10 },
+
+  // Cards
+  card: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+    marginTop: 16,
+  },
+
+  // Meta
   counterRow: { marginTop: 4, alignItems: 'flex-end' },
-  counterText: { fontSize: 12 },
-  // New styles
+  counterText: { fontSize: 12, letterSpacing: 0.2 },
+
+  // Filter chips
   filterRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1, marginRight: 8, marginBottom: 8 },
-  chipText: { fontSize: 12, fontWeight: '600' },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+    marginBottom: 8,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.4 },
+
+  // Calendar
   calendarHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  calendarHeaderText: { width: `${100/7}%`, textAlign: 'center', fontSize: 12 },
+  calendarHeaderText: { width: `${100/7}%`, textAlign: 'center', fontSize: 12, opacity: 0.8 },
   calendarWeekRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  calendarCell: { width: `${100/7}%`, aspectRatio: 1, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1 },
+  calendarCell: { width: `${100/7}%`, aspectRatio: 1, borderWidth: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+
+  // History list
+  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, borderBottomWidth: 1 },
+
   // Action buttons (mobile friendly)
   actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', marginLeft: 12 },
   actionBtn: { paddingHorizontal: 10, paddingVertical: 8, marginRight: 8, marginTop: 6, borderRadius: 8 },

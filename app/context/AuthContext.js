@@ -405,7 +405,7 @@ export const AuthProvider = ({ children }) => {
         if (!hasAdministratorRole && ENABLE_ADMIN_BOOTSTRAP) {
           const demoAdmin = toDbUser({
             fullName: 'Arjun Nyaupane',
-            email: 'arjunnyaupane135@gmail.com',
+            email: 'arjunnyaupane16@gmail.com',
             username: 'admin',
             password: 'admin1234',
             phone: '',
@@ -1357,6 +1357,50 @@ export const AuthProvider = ({ children }) => {
     removeUser,
     setUserRole,
     resetPassword,
+    // Forgot password (not logged-in) helpers
+    requestPasswordReset: async (email) => {
+      try {
+        const targetEmail = String(email || '').trim();
+        if (!targetEmail || !targetEmail.includes('@')) return { success: false, message: 'Enter a valid email' };
+        const resp = await fetch(`${SERVER_URL}/auth/send-code`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: targetEmail, purpose: 'reset_password' })
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json?.ok) return { success: false, message: json?.error || 'Failed to send reset code' };
+        return { success: true, expiresInSeconds: json.expiresInSeconds };
+      } catch {
+        return { success: false, message: 'Network error sending reset email' };
+      }
+    },
+    confirmPasswordReset: async (email, code, newPassword) => {
+      try {
+        const targetEmail = String(email || '').trim();
+        if (!targetEmail || !targetEmail.includes('@')) return { success: false, message: 'Enter a valid email' };
+        if (!code) return { success: false, message: 'Enter verification code' };
+        if (!newPassword || newPassword.length < 6) return { success: false, message: 'Password too short' };
+        // Verify code
+        const v = await fetch(`${SERVER_URL}/auth/verify-code`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: targetEmail, purpose: 'reset_password', code })
+        });
+        const vjson = await v.json();
+        if (!v.ok || !vjson?.ok) return { success: false, message: vjson?.error || 'Invalid or expired code' };
+        // Update password in Supabase by email
+        if (!supabase) return { success: false, message: 'Supabase unavailable' };
+        const { data, error } = await supabase
+          .from('users')
+          .update({ password: newPassword })
+          .eq('email', targetEmail)
+          .select('*')
+          .maybeSingle();
+        if (error) return { success: false, message: error.message };
+        if (!data) return { success: false, message: 'Account not found for this email' };
+        return { success: true };
+      } catch (e) {
+        return { success: false, message: 'Unexpected error completing reset' };
+      }
+    },
     // Verification helpers
     requestVerificationCode: async (purpose, emailOverride) => {
       try {

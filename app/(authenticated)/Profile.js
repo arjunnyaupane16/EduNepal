@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { applyNotificationsEnabledSideEffects, setNotificationsEnabled } from "../../utils/notifications";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
-import { setNotificationsEnabled, applyNotificationsEnabledSideEffects } from "../../utils/notifications";
 
 export default function Profile() {
   const { user, logout, updateUser, updateUserById, isAdmin, canAdminEditField, uploadProfileImage, deleteProfileImage, getFreshProfileImageUrl, requestUsernameChangeFlow, confirmUsernameChangeFlow, requestEmailChangeFlow, confirmEmailChangeFlow } = useAuth();
@@ -150,7 +150,7 @@ export default function Profile() {
       try {
         const conv = await manipulateAsync(uri, [], { compress: 0.9, format: SaveFormat.JPEG });
         if (conv?.uri) jpegUri = conv.uri;
-      } catch {}
+      } catch { }
       // Optimistically show converted local image to avoid white flash
       setProfileImage(jpegUri);
       try {
@@ -217,7 +217,7 @@ export default function Profile() {
       try {
         const conv = await manipulateAsync(uri, [], { compress: 0.9, format: SaveFormat.JPEG });
         if (conv?.uri) jpegUri = conv.uri;
-      } catch {}
+      } catch { }
       // Optimistically show converted local image to avoid white flash
       setProfileImage(jpegUri);
       try {
@@ -262,7 +262,7 @@ export default function Profile() {
     }
   };
 
-  // Determine admin status whether isAdmin is a function or boolean
+  // Determine  status whether isAdmin is a function or boolean
   const isAdminFlag = typeof isAdmin === 'function' ? !!isAdmin() : !!isAdmin;
 
   // Immediate autosave helper (admin -> updateUserById, non-admin -> updateUser)

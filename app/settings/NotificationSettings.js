@@ -6,6 +6,12 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotificationsStore } from '../context/NotificationContext';
+import {
+  getNotificationsEnabled,
+  setNotificationsEnabled,
+  applyNotificationsEnabledSideEffects,
+  registerForPushNotificationsAsync,
+} from '../../utils/notifications';
 
 export default function NotificationSettings() {
   const { t } = useLanguage();
@@ -66,6 +72,22 @@ export default function NotificationSettings() {
     // If not cached, rely on NotificationContext initial loader; fallback to defaults
   }, [user?.id]);
 
+  // Sync master push toggle with global notifications flag (device-level)
+  useEffect(() => {
+    (async () => {
+      try {
+        const enabled = await getNotificationsEnabled();
+        setPushNotifications(prev => typeof prev === 'boolean' ? enabled : enabled);
+      } catch {}
+    })();
+  }, []);
+
+  // Realtime: propagate local prefs instantly so gating applies without pressing Save
+  useEffect(() => {
+    if (!user?.id) return;
+    try { setLocalPrefs(user.id, prefsPayload); } catch {}
+  }, [user?.id, prefsPayload]);
+
   const handleSaveSettings = async () => {
     if (!user?.id) return;
     setSaving(true);
@@ -124,7 +146,18 @@ export default function NotificationSettings() {
             title="Push Notifications"
             description="Enable push notifications for real-time updates"
             value={pushNotifications}
-            onValueChange={(v) => setPushNotifications(v)}
+            onValueChange={async (v) => {
+              try {
+                setPushNotifications(v);
+                // Update device/global flag immediately
+                await setNotificationsEnabled(v);
+                await applyNotificationsEnabledSideEffects(v);
+                if (v) {
+                  // Ensure device has a registered push token
+                  await registerForPushNotificationsAsync();
+                }
+              } catch {}
+            }}
             icon="phone-portrait-outline"
           />
           

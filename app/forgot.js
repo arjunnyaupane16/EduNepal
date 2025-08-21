@@ -1,14 +1,40 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { useAuth } from "./context/AuthContext";
 
 export default function Forgot() {
   const [email, setEmail] = useState("");
+  const [step, setStep] = useState(1); // 1: enter email, 2: enter code + new pass
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { requestPasswordReset, confirmPasswordReset } = useAuth();
 
-  const handleReset = () => {
-    if (!email) return Alert.alert("Error", "Enter your email");
-    Alert.alert("Success", "Password reset link sent (demo only)");
+  const handleSend = async () => {
+    const e = String(email || '').trim();
+    if (!e) return Alert.alert("Error", "Enter your email");
+    setLoading(true);
+    const resp = await requestPasswordReset?.(e);
+    setLoading(false);
+    if (!resp?.success) return Alert.alert("Error", resp?.message || "Failed to send code");
+    Alert.alert("Email sent", "Enter the verification code sent to your email.");
+    setStep(2);
+  };
+
+  const handleConfirm = async () => {
+    const e = String(email || '').trim();
+    if (!e) return Alert.alert("Error", "Enter your email");
+    if (!code) return Alert.alert("Error", "Enter the verification code");
+    if (!password || password.length < 6) return Alert.alert("Error", "Password must be at least 6 characters");
+    if (password !== confirm) return Alert.alert("Error", "Passwords do not match");
+    setLoading(true);
+    const resp = await confirmPasswordReset?.(e, code, password);
+    setLoading(false);
+    if (!resp?.success) return Alert.alert("Error", resp?.message || "Failed to reset password");
+    Alert.alert("Success", "Your password has been reset. Please log in.");
     router.replace("/login");
   };
 
@@ -16,16 +42,51 @@ export default function Forgot() {
     <View style={styles.container}>
       <Text style={styles.title}>Forgot Password</Text>
 
-      <TextInput
-        placeholder="Enter your email"
-        value={email}
-        onChangeText={setEmail}
-        style={styles.input}
-      />
-
-      <TouchableOpacity style={styles.button} onPress={handleReset}>
-        <Text style={styles.buttonText}>Send Reset Link</Text>
-      </TouchableOpacity>
+      {step === 1 ? (
+        <>
+          <TextInput
+            placeholder="Enter your email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            style={styles.input}
+          />
+          <TouchableOpacity style={[styles.button, loading && { opacity: 0.6 }]} onPress={handleSend} disabled={loading}>
+            <Text style={styles.buttonText}>{loading ? 'Sending...' : 'Send Code'}</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <TextInput
+            placeholder="Verification code"
+            value={code}
+            onChangeText={setCode}
+            keyboardType="number-pad"
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="New password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Confirm new password"
+            value={confirm}
+            onChangeText={setConfirm}
+            secureTextEntry
+            style={styles.input}
+          />
+          <TouchableOpacity style={[styles.button, loading && { opacity: 0.6 }]} onPress={handleConfirm} disabled={loading}>
+            <Text style={styles.buttonText}>{loading ? 'Updating...' : 'Reset Password'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setStep(1)} style={{ marginTop: 12 }}>
+            <Text style={styles.linkText}>Use a different email</Text>
+          </TouchableOpacity>
+        </>
+      )}
 
       <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
         <Text style={styles.linkText}>Back to Login</Text>

@@ -128,7 +128,6 @@ export default function SettingsScreen() {
 
         <Section title="Privacy & Data">
           <SettingsItem icon="privacy-tip" label="Privacy Dashboard" onPress={() => router.push('/settings/PrivacySettings')} theme={theme} />
-          <SettingsItem icon="share" label="Data Sharing Preferences" subLabel="Control how your data is used" theme={theme} />
           <SettingsItem icon="gavel" label={t('termsConditions')} onPress={() => router.push('/settings/Terms')} theme={theme} />
         </Section>
 

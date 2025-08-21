@@ -19,7 +19,7 @@ export default function SystemLogs() {
     { ts: Date.now() - 60000 * 4, level: 'INFO', msg: 'Expo push scheduler initialized' },
     { ts: Date.now() - 60000 * 3, level: 'WARN', msg: 'No SMTP credentials found, email fallback disabled' },
     { ts: Date.now() - 60000 * 2, level: 'INFO', msg: 'Registered push token for device XYZ' },
-    { ts: Date.now() - 60000 * 1, level: 'INFO', msg: 'Registered email for user arjunnyaupane135@gmail.com' },
+    { ts: Date.now() - 60000 * 1, level: 'INFO', msg: 'Registered email for user arjunnyaupane16@gmail.com' },
   ]);
 
   useEffect(() => {

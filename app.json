@@ -19,7 +19,9 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Allow elearn Nep to access the camera to take profile photos.",
         "NSPhotoLibraryUsageDescription": "Allow elearn Nep to access your photo library to choose a profile photo.",
-        "NSPhotoLibraryAddUsageDescription": "Allow elearn Nep to save images to your photo library."
+        "NSPhotoLibraryAddUsageDescription": "Allow elearn Nep to save images to your photo library.",
+        "NSMicrophoneUsageDescription": "Allow elearn Nep to use the microphone for audio features.",
+        "NSLocationWhenInUseUsageDescription": "Allow elearn Nep to access your location while using the app for location-based features."
       }
     },
     "android": {
@@ -31,7 +33,9 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
