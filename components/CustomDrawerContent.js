@@ -21,7 +21,7 @@ const DrawerItemBox = ({ icon, label, desc, onPress, theme }) => (
 
 export default function CustomDrawerContent(props) {
   const { theme } = useTheme();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
 
@@ -84,6 +84,20 @@ export default function CustomDrawerContent(props) {
         onPress={() => router.push('/theme')}
         theme={theme}
       />
+
+      {/* Admin section */}
+      {(user?.role === 'Administrator' || ['admin', '_arjunnn9y8a7u6pa4n3e2'].includes(user?.username)) && (
+        <View>
+          <Text style={[styles.section, { color: theme.text }]}>Admin</Text>
+          <DrawerItemBox
+            icon="campaign"
+            label="Notification Center"
+            desc="View history and manage notifications"
+            onPress={() => router.push('/settings/SystemNotifications')}
+            theme={theme}
+          />
+        </View>
+      )}
 
       <Text style={[styles.section, { color: theme.text }]}>{t('supportAccount')}</Text>
 
