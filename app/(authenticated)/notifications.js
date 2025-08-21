@@ -11,12 +11,13 @@ export default function NotificationsScreen() {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { getForUser, clearForUser, markAllRead, markAllUnread, refreshForUser, loadMoreForUser } = useNotificationsStore();
+  const { getForUser, clearForUser, markAllRead, markAllUnread, refreshForUser, loadMoreForUser, markRead, markUnread } = useNotificationsStore();
   const navigation = useNavigation();
   const items = useMemo(() => (user ? getForUser(user.id) : []), [user?.id, getForUser]);
   const allRead = useMemo(() => items.length > 0 && items.every(n => n.read), [items]);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [selected, setSelected] = useState(new Set());
   const endReachedGuard = useRef(false);
 
   useEffect(() => {
@@ -37,6 +38,42 @@ export default function NotificationsScreen() {
     setLoadingMore(true);
     try { await loadMoreForUser(user.id); } finally { setLoadingMore(false); setTimeout(() => { endReachedGuard.current = false; }, 500); }
   }, [user?.id, loadMoreForUser, loadingMore]);
+
+  // Clean up selection if items list changes (remove ids that no longer exist)
+  useEffect(() => {
+    if (!items?.length && selected.size) {
+      setSelected(new Set());
+      return;
+    }
+    if (selected.size) {
+      const valid = new Set(items.map(i => i.id));
+      const next = new Set(Array.from(selected).filter(id => valid.has(id)));
+      if (next.size !== selected.size) setSelected(next);
+    }
+  }, [items]);
+
+  const toggleSelect = useCallback((id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  const markSelected = useCallback((read) => {
+    if (!user?.id || selected.size === 0) return;
+    const ids = Array.from(selected);
+    ids.forEach(id => {
+      if (read) {
+        markRead(user.id, id);
+      } else {
+        markUnread(user.id, id);
+      }
+    });
+    clearSelection();
+  }, [selected, user?.id, markRead, markUnread, clearSelection]);
 
   if (!user) {
     return (
@@ -85,53 +122,87 @@ export default function NotificationsScreen() {
               <ActivityIndicator color={theme.primary || '#2563EB'} />
             </View>
           ) : null}
-          renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.shadow }] }>
-              <View style={styles.cardRow}>
-                <View style={styles.iconWrap}>
-                  <Ionicons name={item.read ? 'notifications-outline' : 'notifications'} size={20} color={item.read ? '#9aa0a6' : '#4285F4'} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    {!item.read && <View style={styles.unreadDot} />}
-                    <Text style={[styles.title, { color: theme.text, fontWeight: item.read ? '600' : '800' }]} numberOfLines={2}>{item.title}</Text>
-                  </View>
-                  {item.body ? (
-                    <Text style={[styles.body, item.read ? { color: '#666' } : null]} numberOfLines={3}>{item.body}</Text>
-                  ) : null}
-                  {item.date ? (
-                    <View style={styles.metaRow}>
-                      <Ionicons name="time-outline" size={14} color="#9aa0a6" />
-                      <Text style={styles.metaText}>{new Date(item.date).toLocaleString()}</Text>
+          renderItem={({ item }) => {
+            const isSelected = selected.has(item.id);
+            const onPress = () => {
+              if (selected.size > 0) {
+                toggleSelect(item.id);
+              } else {
+                if (!user?.id) return;
+                if (item.read) markUnread(user.id, item.id); else markRead(user.id, item.id);
+              }
+            };
+            const onLongPress = () => toggleSelect(item.id);
+            return (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={onPress}
+                onLongPress={onLongPress}
+              >
+                <View style={[
+                  styles.card,
+                  { backgroundColor: theme.card, shadowColor: theme.shadow, borderWidth: isSelected ? 2 : 0, borderColor: isSelected ? (theme.primary || '#2563EB') : 'transparent' }
+                ] }>
+                  <View style={styles.cardRow}>
+                    <View style={styles.iconWrap}>
+                      <Ionicons name={item.read ? 'notifications-outline' : 'notifications'} size={20} color={item.read ? '#9aa0a6' : '#4285F4'} />
                     </View>
-                  ) : null}
-                  {/* item-level actions removed as per request */}
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        {!item.read && <View style={styles.unreadDot} />}
+                        <Text style={[styles.title, { color: theme.text, fontWeight: item.read ? '600' : '800' }]} numberOfLines={2}>{item.title}</Text>
+                      </View>
+                      {item.body ? (
+                        <Text style={[styles.body, item.read ? { color: '#666' } : null]} numberOfLines={3}>{item.body}</Text>
+                      ) : null}
+                      {item.date ? (
+                        <View style={styles.metaRow}>
+                          <Ionicons name="time-outline" size={14} color="#9aa0a6" />
+                          <Text style={styles.metaText}>{new Date(item.date).toLocaleString()}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
-          )}
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
 
-      {items.length > 0 && (
-        <View style={[styles.footerActions, { borderColor: theme.border, backgroundColor: theme.cardBackground || '#fff' }]}>
-          <TouchableOpacity
-            onPress={() => (allRead ? markAllUnread(user.id) : markAllRead(user.id))}
-            style={[styles.footerBtn, { backgroundColor: allRead ? '#EEF2F7' : '#2563EB' }]}
-          >
-            <Text style={[styles.footerBtnText, { color: allRead ? '#1F2937' : '#fff' }]}>
-              {allRead ? t('markAllAsUnread') : t('markAllAsRead')}
-            </Text>
+      {selected.size > 0 ? (
+        <View style={[styles.footerActions, { borderColor: theme.border, backgroundColor: theme.cardBackground || '#fff' }]}> 
+          <TouchableOpacity onPress={() => markSelected(true)} style={[styles.footerBtn, { backgroundColor: '#2563EB' }]}>
+            <Text style={[styles.footerBtnText, { color: '#fff' }]}>{t('markAsRead') || 'Mark Read'} ({selected.size})</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => {
-            Alert.alert(t('clearAll'), t('confirm'), [
-              { text: t('cancel') || 'Cancel', style: 'cancel' },
-              { text: t('clearAll') || 'Clear All', style: 'destructive', onPress: () => clearForUser(user.id) },
-            ]);
-          }} style={[styles.footerBtn, { backgroundColor: '#FEE2E2' }]}>
-            <Text style={[styles.footerBtnText, { color: '#B91C1C' }]}>{t('clearAll')}</Text>
+          <TouchableOpacity onPress={() => markSelected(false)} style={[styles.footerBtn, { backgroundColor: '#EEF2F7' }]}>
+            <Text style={[styles.footerBtnText, { color: '#1F2937' }]}>{t('markAsUnread') || 'Mark Unread'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={clearSelection} style={[styles.footerBtn, { backgroundColor: '#FEE2E2' }]}>
+            <Text style={[styles.footerBtnText, { color: '#B91C1C' }]}>{t('clearSelection') || 'Clear Selection'}</Text>
           </TouchableOpacity>
         </View>
+      ) : (
+        items.length > 0 && (
+          <View style={[styles.footerActions, { borderColor: theme.border, backgroundColor: theme.cardBackground || '#fff' }]}> 
+            <TouchableOpacity
+              onPress={() => (allRead ? markAllUnread(user.id) : markAllRead(user.id))}
+              style={[styles.footerBtn, { backgroundColor: allRead ? '#EEF2F7' : '#2563EB' }]}
+            >
+              <Text style={[styles.footerBtnText, { color: allRead ? '#1F2937' : '#fff' }]}> 
+                {allRead ? t('markAllAsUnread') : t('markAllAsRead')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              Alert.alert(t('clearAll'), t('confirm'), [
+                { text: t('cancel') || 'Cancel', style: 'cancel' },
+                { text: t('clearAll') || 'Clear All', style: 'destructive', onPress: () => clearForUser(user.id) },
+              ]);
+            }} style={[styles.footerBtn, { backgroundColor: '#FEE2E2' }]}> 
+              <Text style={[styles.footerBtnText, { color: '#B91C1C' }]}>{t('clearAll')}</Text>
+            </TouchableOpacity>
+          </View>
+        )
       )}
     </View>
   );

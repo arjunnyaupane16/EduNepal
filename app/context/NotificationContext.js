@@ -26,9 +26,24 @@ export function NotificationProvider({ children }) {
     });
   };
 
-  const clearForUser = (userId) => {
+  const clearForUser = async (userId) => {
     if (!userId) return;
+    // Clear local list immediately for responsiveness
     setByUser(prev => ({ ...prev, [userId]: [] }));
+    // Delete per-user delivery/read rows (optional clean-up)
+    if (supabase) {
+      try {
+        await supabase.from('notification_deliveries').delete().eq('user_id', userId);
+      } catch {}
+    }
+    // Persist a cutoff so older notifications remain hidden on next refreshes
+    const nowIso = new Date().toISOString();
+    const current = prefsRef.current[userId] || {};
+    const nextPrefs = {
+      ...current,
+      types: { ...(current.types || {}), cleared_at: nowIso }
+    };
+    try { await updatePrefs(userId, nextPrefs); } catch {}
   };
 
   const getForUser = (userId) => (userId ? (byUser[userId] || []) : []);
@@ -96,6 +111,12 @@ export function NotificationProvider({ children }) {
     // Gate by prefs (master + types)
     const prefs = prefsRef.current[userId];
     if (prefs && prefs.master_enabled === false) return [];
+    // Exclude notifications cleared earlier
+    const clearedAt = prefs?.types?.cleared_at;
+    if (clearedAt) {
+      const cutoff = new Date(clearedAt).getTime();
+      list = list.filter(n => new Date(n.date).getTime() > cutoff);
+    }
     if (prefs && prefs.types) {
       list = list.filter(n => {
         const type = n?.data?.type;
@@ -219,6 +240,9 @@ export function NotificationProvider({ children }) {
         if (prefs && prefs.master_enabled === false) return;
         const type = n?.data?.type;
         if (prefs && prefs.types && typeof prefs.types[type] !== 'undefined' && prefs.types[type] === false) return;
+        // Ignore inserts older than last clear
+        const clearedAt = prefs?.types?.cleared_at;
+        if (clearedAt && new Date(n.created_at).getTime() <= new Date(clearedAt).getTime()) return;
         console.log('[Notifications] Realtime insert received:', { id: n.id, audience: n.audience });
         setByUser(prev => {
           const list = prev[user.id] || [];
@@ -226,6 +250,22 @@ export function NotificationProvider({ children }) {
           if (list.some(x => x.id === n.id)) return prev;
           const item = { id: n.id, title: n.title, body: n.body, date: n.created_at, read: false, data: n.data || {} };
           return { ...prev, [user.id]: [item, ...list] };
+        });
+      })
+      // Realtime: notifications deletes (admin global deletes should propagate)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'notifications' }, (payload) => {
+        const oldRow = payload?.old;
+        if (!oldRow) return;
+        const uid = user.id;
+        // Audience filter: remove only if this user would have received it
+        const matches = oldRow.audience === 'all' || oldRow.audience === `user:${uid}`;
+        if (!matches) return;
+        setByUser(prev => {
+          const list = prev[uid] || [];
+          if (!list.length) return prev;
+          const next = list.filter(n => n.id !== oldRow.id);
+          if (next.length === list.length) return prev; // no change
+          return { ...prev, [uid]: next };
         });
       })
       .subscribe();

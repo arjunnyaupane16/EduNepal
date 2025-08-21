@@ -36,8 +36,6 @@ export default function AuthenticatedLayout() {
       <Drawer.Screen name="Profile" options={{ title: "Profile" }} />
       <Drawer.Screen name="settings" options={{ title: "Settings" }} />
       <Drawer.Screen name="notifications" options={{ title: "Notifications" }} />
-      <Drawer.Screen name="theme" options={{ title: "Theme" }} />
-      <Drawer.Screen name="downloads" options={{ title: "Downloads" }} />
     </Drawer>
   );
 }

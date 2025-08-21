@@ -83,8 +83,48 @@ async function sendEmail(to, subject, text) {
   }
 }
 
+// Helper: insert notification row in Supabase and archive JSON to Storage bucket "Notifications"
+async function insertAndArchiveNotification({ title, body, audience = 'all', data = {}, created_by = null }) {
+  if (!supabase) return null;
+  try {
+    const { data: inserted, error } = await supabase
+      .from('notifications')
+      .insert([{ title, body, audience, data, created_by }])
+      .select('*')
+      .single();
+    if (error) {
+      console.error('[Supabase] insert notification failed:', error);
+      return null;
+    }
+    try {
+      const payload = {
+        id: inserted.id,
+        title: inserted.title,
+        body: inserted.body,
+        audience: inserted.audience,
+        data: inserted.data || {},
+        created_by: inserted.created_by || null,
+        created_at: inserted.created_at,
+      };
+      const buf = Buffer.from(JSON.stringify(payload, null, 2));
+      const uploadRes = await supabase.storage
+        .from('Notifications')
+        .upload(`notifications/${inserted.id}.json`, buf, { contentType: 'application/json', upsert: true });
+      if (uploadRes?.error) {
+        console.warn('[Storage] Upload notification archive failed:', uploadRes.error.message || uploadRes.error);
+      }
+    } catch (e) {
+      console.warn('[Storage] Exception archiving notification:', e?.message || e);
+    }
+    return inserted;
+  } catch (e) {
+    console.error('[Supabase] insertAndArchiveNotification exception:', e?.message || e);
+    return null;
+  }
+}
+
 // Shared helper: send a broadcast to all registered recipients NOW
-async function sendBroadcastNow({ title = 'EduNepal', message }) {
+async function sendBroadcastNow({ title = 'EduNepal', message, mode = 'now' }) {
   if (!message) throw new Error('message is required');
   // Push broadcast
   if (tokens.size > 0) {
@@ -112,6 +152,14 @@ async function sendBroadcastNow({ title = 'EduNepal', message }) {
       });
     }
   }
+  // Also write to Supabase notifications table so push appears in in-app feed (best-effort)
+  await insertAndArchiveNotification({
+    title,
+    body: message,
+    audience: 'all',
+    data: { type: 'push', mode },
+    created_by: null,
+  });
 }
 
 // Issue a verification code for a purpose: change_password | change_email | delete_account
@@ -132,6 +180,64 @@ app.post('/auth/send-code', async (req, res) => {
   } catch (err) {
     console.error('send-code error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// Admin: list notifications (most recent first)
+// Query: ?limit=50&audience=all|user:<id>|segment:<id>
+app.get('/admin/notifications', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'Supabase not configured' });
+    const limit = Math.min(Math.max(parseInt(req.query?.limit || '50', 10) || 50, 1), 200);
+    const audience = req.query?.audience ? String(req.query.audience) : null;
+    let q = supabase
+      .from('notifications')
+      .select('id, title, body, audience, data, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (audience) q = q.eq('audience', audience);
+    const { data, error } = await q;
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    res.json({ ok: true, notifications: data || [] });
+  } catch (err) {
+    console.error('GET /admin/notifications error:', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// Admin: delete a single notification globally (cascades deliveries) and remove archive file
+app.delete('/admin/notifications/:id', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'Supabase not configured' });
+    const id = String(req.params.id);
+    const { error } = await supabase.from('notifications').delete().eq('id', id);
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    // Best-effort: remove archived JSON
+    try { await supabase.storage.from('Notifications').remove([`notifications/${id}.json`]); } catch {}
+    res.json({ ok: true, id });
+  } catch (err) {
+    console.error('DELETE /admin/notifications/:id error:', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// Admin: bulk delete notifications by ids
+app.post('/admin/notifications/bulk-delete', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'Supabase not configured' });
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : [];
+    if (ids.length === 0) return res.status(400).json({ ok: false, error: 'ids required' });
+    const { error } = await supabase.from('notifications').delete().in('id', ids);
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    // Best-effort: remove archived files
+    try {
+      const paths = ids.map(id => `notifications/${id}.json`);
+      await supabase.storage.from('Notifications').remove(paths);
+    } catch {}
+    res.json({ ok: true, deleted: ids.length });
+  } catch (err) {
+    console.error('POST /admin/notifications/bulk-delete error:', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
 
@@ -178,33 +284,8 @@ app.post('/broadcast-random', async (req, res) => {
 
   setTimeout(async () => {
     try {
-      // Push broadcast
-      if (tokens.size > 0) {
-        const messages = [];
-        for (const token of tokens) {
-          messages.push({ to: token, sound: 'default', title, body: message, data: { type: 'system' } });
-        }
-        const chunks = expo.chunkPushNotifications(messages);
-        for (const chunk of chunks) {
-          await expo.sendPushNotificationsAsync(chunk);
-        }
-      }
-
-      // Email broadcast (fallback)
-      if (mailer && emails.size > 0) {
-        const list = Array.from(emails);
-        const MAX_BCC = 50; // batch emails
-        for (let i = 0; i < list.length; i += MAX_BCC) {
-          const batch = list.slice(i, i + MAX_BCC);
-          await mailer.sendMail({
-            from: process.env.FROM_EMAIL,
-            to: process.env.FROM_EMAIL, // primary recipient (self)
-            bcc: batch.join(','),
-            subject: title,
-            text: message,
-          });
-        }
-      }
+      // Send push/email and write to Supabase
+      await sendBroadcastNow({ title, message, mode: 'random' });
       // Log sent event
       broadcastHistory.unshift({ id: `${id}-sent`, mode: 'random', title, message, status: 'sent', sentAt: new Date().toISOString(), recipients: { tokens: tokens.size, emails: emails.size } });
       // Optionally: clean up invalid tokens by querying receipts later
@@ -222,7 +303,7 @@ app.post('/broadcast-now', async (req, res) => {
   try {
     const { title = 'EduNepal', message } = req.body || {};
     if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
-    await sendBroadcastNow({ title, message });
+    await sendBroadcastNow({ title, message, mode: 'now' });
     const sentAt = new Date().toISOString();
     // Log sent now
     broadcastHistory.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, mode: 'now', title, message, status: 'sent', sentAt, recipients: { tokens: tokens.size, emails: emails.size } });
@@ -311,7 +392,7 @@ app.post('/schedule-daily', (req, res) => {
     const scheduleNext = () => {
       dailyTimer = setTimeout(async () => {
         try {
-          await sendBroadcastNow({ title, message });
+          await sendBroadcastNow({ title, message, mode: 'daily' });
           // Log sent event for daily
           broadcastHistory.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, mode: 'daily', title, message, status: 'sent', sentAt: new Date().toISOString(), recipients: { tokens: tokens.size, emails: emails.size } });
         } catch (e) {
@@ -326,7 +407,7 @@ app.post('/schedule-daily', (req, res) => {
     // Start initial delay, then schedule every 24h via recursive setTimeout
     setTimeout(async () => {
       try {
-        await sendBroadcastNow({ title, message });
+        await sendBroadcastNow({ title, message, mode: 'daily' });
         // Log first send
         broadcastHistory.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, mode: 'daily', title, message, status: 'sent', sentAt: new Date().toISOString(), recipients: { tokens: tokens.size, emails: emails.size } });
       } catch (e) {

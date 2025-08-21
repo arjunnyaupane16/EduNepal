@@ -20,8 +20,10 @@ export default function SystemNotifications() {
   const [minute, setMinute] = useState(0);
   const [stats, setStats] = useState({ tokens: 0, emails: 0, dailyTime: null });
   const [history, setHistory] = useState([]);
+  const [notifHistory, setNotifHistory] = useState([]); // Supabase notifications list
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState(new Set());
+  const [selectedNotifs, setSelectedNotifs] = useState(new Set());
   // Dev: runtime server URL override
   const [serverUrl, setServerUrl] = useState('');
   const [savingUrl, setSavingUrl] = useState(false);
@@ -33,7 +35,7 @@ export default function SystemNotifications() {
 
   if (!isAdmin) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}> 
         <Text style={[styles.title, { color: theme.text }]}>Unauthorized</Text>
         <Text style={{ color: theme.secondaryText }}>Admin access required.</Text>
       </View>
@@ -44,12 +46,14 @@ export default function SystemNotifications() {
     try {
       setRefreshing(true);
       const base = await getServerUrl();
-      const [sRes, hRes] = await Promise.all([
+      const [sRes, hRes, nRes] = await Promise.all([
         fetch(`${base}/stats`).then(r => r.json()).catch(() => null),
         fetch(`${base}/broadcast-history`).then(r => r.json()).catch(() => null),
+        fetch(`${base}/admin/notifications?limit=100`).then(r => r.json()).catch(() => null),
       ]);
       if (sRes?.ok) setStats({ tokens: sRes.tokens || 0, emails: sRes.emails || 0, dailyTime: sRes.dailyTime || null });
       if (hRes?.ok) setHistory(Array.isArray(hRes.history) ? hRes.history : []);
+      if (nRes?.ok) setNotifHistory(Array.isArray(nRes.notifications) ? nRes.notifications : []);
     } catch (e) {
       // silent
     } finally {
@@ -128,6 +132,17 @@ export default function SystemNotifications() {
     setSelected(new Set(history.map(h => h.id)));
   };
   const unselectAll = () => setSelected(new Set());
+
+  // Selection for Supabase notifications
+  const toggleSelectNotif = (id) => {
+    setSelectedNotifs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const selectAllNotifs = () => setSelectedNotifs(new Set(notifHistory.map(n => n.id)));
+  const unselectAllNotifs = () => setSelectedNotifs(new Set());
 
   const deleteSelected = async () => {
     if (selected.size === 0) return Alert.alert('Nothing selected', 'Select one or more entries.');
