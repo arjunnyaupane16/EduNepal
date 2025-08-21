@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useMemo, useState } from 'react';
+import Constants from 'expo-constants';
 import {
   ActivityIndicator,
   Alert,
@@ -16,15 +17,19 @@ import {
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 
-// Import your local images
+// Use Supabase-hosted images instead of bundling local PNGs to reduce app size
+const SUPABASE_URL = Constants?.expoConfig?.extra?.supabaseUrl || 'https://eovzqcjgqmlaubzwwqpx.supabase.co';
+const STORAGE_BUCKET = Constants?.expoConfig?.extra?.storageBucket || 'ElearnNepal';
+const imageBase = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/images`;
+
 const coverImages = {
-  A: require('../../../assets/images/A.png'),
-  B: require('../../../assets/images/B.png'),
-  C: require('../../../assets/images/C.png'),
-  D: require('../../../assets/images/D.png'),
-  E: require('../../../assets/images/E.png'),
-  F: require('../../../assets/images/F.png'),
-  G: require('../../../assets/images/G.png'),
+  A: { uri: `${imageBase}/A.png` },
+  B: { uri: `${imageBase}/B.png` },
+  C: { uri: `${imageBase}/C.png` },
+  D: { uri: `${imageBase}/D.png` },
+  E: { uri: `${imageBase}/E.png` },
+  F: { uri: `${imageBase}/F.png` },
+  G: { uri: `${imageBase}/G.png` },
 };
 
 export default function Textbook() {
