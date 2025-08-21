@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -24,6 +24,14 @@ export default function SystemNotifications() {
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [selectedNotifs, setSelectedNotifs] = useState(new Set());
+  // Time filter & calendar
+  const [timeFilter, setTimeFilter] = useState('month'); // 'day' | 'week' | 'month' | 'year' | 'custom'
+  const [selectedDate, setSelectedDate] = useState(new Date()); // used for 'day'
+  const [customRange, setCustomRange] = useState({ start: null, end: null });
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
   // Dev: runtime server URL override
   const [serverUrl, setServerUrl] = useState('');
   const [savingUrl, setSavingUrl] = useState(false);
@@ -60,6 +68,63 @@ export default function SystemNotifications() {
       setRefreshing(false);
     }
   };
+
+  // Helpers: date range from filter
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  const endOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  const startOfWeek = (d) => {
+    const day = d.getDay(); // 0 Sun..6 Sat
+    const diff = (day + 6) % 7; // make Monday start (0)
+    const s = new Date(d);
+    s.setDate(d.getDate() - diff);
+    s.setHours(0,0,0,0);
+    return s;
+  };
+  const endOfWeek = (d) => {
+    const s = startOfWeek(d);
+    const e = new Date(s);
+    e.setDate(s.getDate() + 6);
+    e.setHours(23,59,59,999);
+    return e;
+  };
+  const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1, 0,0,0,0);
+  const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23,59,59,999);
+  const startOfYear = (d) => new Date(d.getFullYear(), 0, 1, 0,0,0,0);
+  const endOfYear = (d) => new Date(d.getFullYear(), 11, 31, 23,59,59,999);
+
+  const getRange = () => {
+    if (timeFilter === 'day') return { start: startOfDay(selectedDate), end: endOfDay(selectedDate) };
+    if (timeFilter === 'week') return { start: startOfWeek(new Date()), end: endOfWeek(new Date()) };
+    if (timeFilter === 'month') return { start: startOfMonth(new Date()), end: endOfMonth(new Date()) };
+    if (timeFilter === 'year') return { start: startOfYear(new Date()), end: endOfYear(new Date()) };
+    if (timeFilter === 'custom') return { start: customRange.start, end: customRange.end };
+    return { start: null, end: null };
+  };
+
+  const inRange = (ts) => {
+    const { start, end } = getRange();
+    if (!start || !end) return true;
+    const t = new Date(ts).getTime();
+    return t >= start.getTime() && t <= end.getTime();
+  };
+
+  // Calendar grid (simple inline, no deps)
+  const buildCalendar = (anchor) => {
+    const year = anchor.getFullYear();
+    const month = anchor.getMonth();
+    const first = new Date(year, month, 1);
+    const startWeekDay = (first.getDay() + 6) % 7; // Mon=0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < startWeekDay; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+    while (cells.length % 7 !== 0) cells.push(null);
+    const weeks = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    return weeks;
+  };
+
+  const weeks = buildCalendar(calendarMonth);
 
   const handleCreateInAppNotification = async () => {
     try {
@@ -475,8 +540,80 @@ export default function SystemNotifications() {
         <Text style={styles.btnText}>{loading ? 'Scheduling…' : 'Schedule Daily Broadcast'}</Text>
       </TouchableOpacity>
 
+      {/* Filters */}
+      <View style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border || '#ddd', marginTop: 8 }]}> 
+        <Text style={{ color: theme.text, fontWeight: '700', marginBottom: 8 }}>History Filters</Text>
+        <View style={styles.filterRow}>
+          {['day','week','month','year','custom'].map(key => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.chip, timeFilter===key ? { backgroundColor: theme.primary } : { borderColor: theme.border || '#ddd' }]}
+              onPress={() => setTimeFilter(key)}
+            >
+              <Text style={[styles.chipText, { color: timeFilter===key ? '#fff' : theme.text }]}>{key.toUpperCase()}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {timeFilter === 'day' && (
+          <View style={{ marginTop: 10 }}>
+            <View style={styles.rowBetween}>
+              <TouchableOpacity onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth()-1, 1))}>
+                <Ionicons name="chevron-back" size={20} color={theme.text} />
+              </TouchableOpacity>
+              <Text style={{ color: theme.text, fontWeight: '600' }}>{calendarMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</Text>
+              <TouchableOpacity onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth()+1, 1))}>
+                <Ionicons name="chevron-forward" size={20} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.calendarHeaderRow}>
+              {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+                <Text key={d} style={[styles.calendarHeaderText, { color: theme.secondaryText }]}>{d}</Text>
+              ))}
+            </View>
+            {weeks.map((w, i) => (
+              <View key={i} style={styles.calendarWeekRow}>
+                {w.map((d, j) => {
+                  const isSelected = d && selectedDate && d.toDateString() === selectedDate.toDateString();
+                  return (
+                    <TouchableOpacity
+                      key={j}
+                      style={[styles.calendarCell, isSelected ? { backgroundColor: theme.primary } : { borderColor: theme.border || '#eee' }]}
+                      onPress={() => d && setSelectedDate(d)}
+                      disabled={!d}
+                    >
+                      <Text style={{ color: isSelected ? '#fff' : theme.text }}>{d ? d.getDate() : ''}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {timeFilter === 'custom' && (
+          <View style={{ marginTop: 10 }}>
+            <Text style={{ color: theme.secondaryText, marginBottom: 6 }}>Enter ISO dates (YYYY-MM-DD)</Text>
+            <View style={styles.rowBetween}>
+              <TextInput
+                placeholder="Start"
+                placeholderTextColor={theme.secondaryText}
+                style={[styles.input, { flex: 1, marginRight: 6, backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border || '#ddd' }]}
+                onChangeText={(v)=> setCustomRange(r=>({ ...r, start: v? new Date(v): null }))}
+              />
+              <TextInput
+                placeholder="End"
+                placeholderTextColor={theme.secondaryText}
+                style={[styles.input, { flex: 1, marginLeft: 6, backgroundColor: theme.cardBackground, color: theme.text, borderColor: theme.border || '#ddd' }]}
+                onChangeText={(v)=> setCustomRange(r=>({ ...r, end: v? new Date(v): null }))}
+              />
+            </View>
+          </View>
+        )}
+      </View>
+
       {history?.length > 0 && (
-        <View style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border || '#ddd', marginTop: 16 }]}>
+        <View style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border || '#ddd', marginTop: 16 }]}> 
           <View style={styles.rowBetween}>
             <Text style={{ color: theme.text, fontWeight: '700' }}>History</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -500,8 +637,8 @@ export default function SystemNotifications() {
               </TouchableOpacity>
             </View>
           </View>
-          {history.slice(0, 20).map((h) => (
-            <TouchableOpacity key={h.id} onPress={() => toggleSelect(h.id)} style={[styles.historyRow, { borderColor: theme.border }]}>
+          {history.filter(h => inRange(h.sentAt || h.scheduledAt)).slice(0, 50).map((h) => (
+            <TouchableOpacity key={h.id} onPress={() => toggleSelect(h.id)} style={[styles.historyRow, { borderColor: theme.border }]}> 
               <Ionicons name={selected.has(h.id) ? 'checkbox-outline' : 'square-outline'} size={20} color={selected.has(h.id) ? theme.primary : theme.secondaryText} />
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={{ color: theme.text, fontWeight: '600' }}>{h.title} • {h.mode.toUpperCase()} • {h.status.toUpperCase()}</Text>
@@ -512,6 +649,91 @@ export default function SystemNotifications() {
                 </Text>
               </View>
             </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Supabase in-app notifications list with delete controls */}
+      {notifHistory?.length > 0 && (
+        <View style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border || '#ddd', marginTop: 16 }]}> 
+          <View style={styles.rowBetween}>
+            <Text style={{ color: theme.text, fontWeight: '700' }}>In-App Notifications (Supabase)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={loadStatsAndHistory} disabled={refreshing} style={{ marginRight: 12 }}>
+                <Text style={{ color: theme.primary }}>{refreshing ? 'Refreshing…' : 'Refresh'}</Text>
+              </TouchableOpacity>
+              {selectedNotifs.size === notifHistory.length ? (
+                <TouchableOpacity onPress={unselectAllNotifs} style={{ marginRight: 12 }}>
+                  <Text style={{ color: theme.secondaryText }}>Unselect all</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={selectAllNotifs} style={{ marginRight: 12 }}>
+                  <Text style={{ color: theme.secondaryText }}>Select all</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={async () => {
+                  if (selectedNotifs.size === 0) return Alert.alert('Nothing selected', 'Select one or more entries.');
+                  try {
+                    const base = await getServerUrl();
+                    const res = await fetch(`${base}/admin/notifications/bulk-delete`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: Array.from(selectedNotifs) })
+                    });
+                    const data = await res.json();
+                    if (data?.ok) {
+                      unselectAllNotifs();
+                      loadStatsAndHistory();
+                    } else {
+                      throw new Error(data?.error || 'Delete failed');
+                    }
+                  } catch (e) {
+                    Alert.alert('Delete failed', String(e?.message || e));
+                  }
+                }}
+                disabled={selectedNotifs.size === 0}
+              >
+                <Text style={{ color: selectedNotifs.size === 0 ? theme.border : '#ef4444' }}>Delete selected</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {notifHistory.filter(n => inRange(n.created_at)).slice(0, 50).map((n) => (
+            <View key={n.id} style={[styles.historyRow, { borderColor: theme.border }]}> 
+              <TouchableOpacity onPress={() => toggleSelectNotif(n.id)}>
+                <Ionicons name={selectedNotifs.has(n.id) ? 'checkbox-outline' : 'square-outline'} size={20} color={selectedNotifs.has(n.id) ? theme.primary : theme.secondaryText} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={{ color: theme.text, fontWeight: '600' }}>{n.title}</Text>
+                {!!n.body && <Text style={{ color: theme.secondaryText }} numberOfLines={2}>{n.body}</Text>}
+                <Text style={{ color: theme.secondaryText, fontSize: 12 }}>
+                  {new Date(n.created_at).toLocaleString()} • {n.audience}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={async () => {
+                  Alert.alert('Delete notification', 'This will remove the notification for everyone.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: async () => {
+                      try {
+                        const base = await getServerUrl();
+                        const res = await fetch(`${base}/admin/notifications/${n.id}`, { method: 'DELETE' });
+                        const data = await res.json();
+                        if (data?.ok) {
+                          loadStatsAndHistory();
+                        } else {
+                          throw new Error(data?.error || 'Delete failed');
+                        }
+                      } catch (e) {
+                        Alert.alert('Delete failed', String(e?.message || e));
+                      }
+                    }}
+                  ]);
+                }}
+                style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+              >
+                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
           ))}
         </View>
       )}
@@ -537,4 +759,13 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   counterRow: { marginTop: 4, alignItems: 'flex-end' },
   counterText: { fontSize: 12 },
+  // New styles
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1, marginRight: 8, marginBottom: 8 },
+  chipText: { fontSize: 12, fontWeight: '600' },
+  calendarHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  calendarHeaderText: { width: `${100/7}%`, textAlign: 'center', fontSize: 12 },
+  calendarWeekRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  calendarCell: { width: `${100/7}%`, aspectRatio: 1, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1 },
 });
