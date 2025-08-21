@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Switch,
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
+import { setNotificationsEnabled, applyNotificationsEnabledSideEffects } from "../../utils/notifications";
 
 export default function Profile() {
   const { user, logout, updateUser, updateUserById, isAdmin, canAdminEditField, uploadProfileImage, deleteProfileImage, getFreshProfileImageUrl, requestUsernameChangeFlow, confirmUsernameChangeFlow, requestEmailChangeFlow, confirmEmailChangeFlow } = useAuth();
@@ -99,6 +100,19 @@ export default function Profile() {
   const [emailNotifications, setEmailNotifications] = useState(user?.settings?.emailNotifications || true);
   const [pushNotifications, setPushNotifications] = useState(user?.settings?.pushNotifications || true);
   const [privacyMode, setPrivacyMode] = useState(user?.settings?.privacyMode || false);
+
+  // Keep global notifications flag in sync with stored user setting on load
+  useEffect(() => {
+    (async () => {
+      const v = user?.settings?.notifications;
+      if (typeof v === 'boolean') {
+        setNotifications(v);
+        await setNotificationsEnabled(!!v);
+        await applyNotificationsEnabledSideEffects(!!v);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Verification states (email change UI removed here)
   const [verificationCode, setVerificationCode] = useState('');
@@ -776,12 +790,37 @@ export default function Profile() {
 
         {/* Change Password removed */}
 
+        {/* Global Notifications master toggle */}
+        <View style={styles.settingRow}>
+          <Ionicons name="notifications-outline" size={20} color="#3b82f6" />
+          <Text style={[styles.settingText, { color: theme.text }]}>Notifications</Text>
+          <Switch
+            value={notifications}
+            onValueChange={async (v) => {
+              setNotifications(v);
+              // Persist to backend profile settings
+              saveImmediate({ settings: { ...user?.settings, notifications: v, emailNotifications, pushNotifications } });
+              // Apply global flag + side effects locally
+              await setNotificationsEnabled(!!v);
+              await applyNotificationsEnabledSideEffects(!!v);
+            }}
+            trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
+          />
+        </View>
+
         <View style={styles.settingRow}>
           <Ionicons name="notifications" size={20} color="#3b82f6" />
           <Text style={[styles.settingText, { color: theme.text }]}>Push Notifications</Text>
           <Switch
             value={pushNotifications}
-            onValueChange={(v) => { setPushNotifications(v); saveImmediate({ settings: { ...user?.settings, pushNotifications: v, notifications } }); }}
+            onValueChange={async (v) => {
+              setPushNotifications(v);
+              saveImmediate({ settings: { ...user?.settings, pushNotifications: v, notifications } });
+              // If master notifications is off, keep global disabled; otherwise keep enabled
+              if (!notifications) {
+                await setNotificationsEnabled(false);
+              }
+            }}
             trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
           />
         </View>

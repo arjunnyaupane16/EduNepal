@@ -1,17 +1,42 @@
-import React, { useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useNotificationsStore } from '../context/NotificationContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNavigation } from 'expo-router';
 
 export default function NotificationsScreen() {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { getForUser, clearForUser, markRead, markUnread, markAllRead, markAllUnread } = useNotificationsStore();
+  const { getForUser, clearForUser, markAllRead, markAllUnread, refreshForUser, loadMoreForUser } = useNotificationsStore();
+  const navigation = useNavigation();
   const items = useMemo(() => (user ? getForUser(user.id) : []), [user?.id, getForUser]);
+  const allRead = useMemo(() => items.length > 0 && items.every(n => n.read), [items]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const endReachedGuard = useRef(false);
+
+  useEffect(() => {
+    // Initial fetch of admin-sent notifications
+    if (!user?.id) return;
+    refreshForUser(user.id);
+  }, [user?.id, refreshForUser]);
+
+  const onRefresh = useCallback(async () => {
+    if (!user?.id) return;
+    setRefreshing(true);
+    try { await refreshForUser(user.id); } finally { setRefreshing(false); }
+  }, [user?.id, refreshForUser]);
+
+  const onEndReached = useCallback(async () => {
+    if (!user?.id || loadingMore || endReachedGuard.current) return;
+    endReachedGuard.current = true;
+    setLoadingMore(true);
+    try { await loadMoreForUser(user.id); } finally { setLoadingMore(false); setTimeout(() => { endReachedGuard.current = false; }, 500); }
+  }, [user?.id, loadMoreForUser, loadingMore]);
 
   if (!user) {
     return (
@@ -23,21 +48,21 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }] }>
-      <View style={[styles.header, { borderColor: theme.border }]}>
+      <View style={[styles.header, { borderColor: theme.border }]}> 
+        <TouchableOpacity onPress={() => (navigation?.canGoBack?.() ? navigation.goBack() : navigation.navigate('(authenticated)'))} style={styles.headerBack}>
+          <Ionicons name  ="chevron-back" size={22} color={theme.text} />
+        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>{t('notifications')}</Text>
-        {items.length > 0 && (
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => markAllRead(user.id)} style={styles.headerPillPrimary}>
-              <Text style={styles.headerPillPrimaryText}>{t('markAllAsRead')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => markAllUnread(user.id)} style={styles.headerPill}>
-              <Text style={styles.headerPillText}>{t('markAllAsUnread')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => clearForUser(user.id)}>
-              <Text style={styles.clearAll}>{t('clearAll')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <TouchableOpacity
+          onPress={() => {
+            // Try to navigate to NotificationSettings; fallback to Profile if route not found
+            try { navigation.navigate('settings/NotificationSettings'); }
+            catch { try { navigation.navigate('settings'); } catch { navigation.navigate('(authenticated)'); } }
+          }}
+          style={styles.headerBack}
+        >
+          <Ionicons name="settings-outline" size={20} color={theme.text} />
+        </TouchableOpacity>
       </View>
 
       {items.length === 0 ? (
@@ -51,6 +76,15 @@ export default function NotificationsScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onEndReachedThreshold={0.3}
+          onEndReached={onEndReached}
+          ListFooterComponent={loadingMore ? (
+            <View style={{ paddingVertical: 12 }}>
+              <ActivityIndicator color={theme.primary || '#2563EB'} />
+            </View>
+          ) : null}
           renderItem={({ item }) => (
             <View style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.shadow }] }>
               <View style={styles.cardRow}>
@@ -71,22 +105,33 @@ export default function NotificationsScreen() {
                       <Text style={styles.metaText}>{new Date(item.date).toLocaleString()}</Text>
                     </View>
                   ) : null}
-                  <View style={styles.actionsRow}>
-                    {item.read ? (
-                      <TouchableOpacity onPress={() => markUnread(user.id, item.id)} style={styles.actionPill}>
-                        <Text style={styles.actionText}>{t('markAsUnread')}</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity onPress={() => markRead(user.id, item.id)} style={styles.actionPillPrimary}>
-                        <Text style={styles.actionTextPrimary}>{t('markAsRead')}</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                  {/* item-level actions removed as per request */}
                 </View>
               </View>
             </View>
           )}
         />
+      )}
+
+      {items.length > 0 && (
+        <View style={[styles.footerActions, { borderColor: theme.border, backgroundColor: theme.cardBackground || '#fff' }]}>
+          <TouchableOpacity
+            onPress={() => (allRead ? markAllUnread(user.id) : markAllRead(user.id))}
+            style={[styles.footerBtn, { backgroundColor: allRead ? '#EEF2F7' : '#2563EB' }]}
+          >
+            <Text style={[styles.footerBtnText, { color: allRead ? '#1F2937' : '#fff' }]}>
+              {allRead ? t('markAllAsUnread') : t('markAllAsRead')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => {
+            Alert.alert(t('clearAll'), t('confirm'), [
+              { text: t('cancel') || 'Cancel', style: 'cancel' },
+              { text: t('clearAll') || 'Clear All', style: 'destructive', onPress: () => clearForUser(user.id) },
+            ]);
+          }} style={[styles.footerBtn, { backgroundColor: '#FEE2E2' }]}>
+            <Text style={[styles.footerBtnText, { color: '#B91C1C' }]}>{t('clearAll')}</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -110,6 +155,9 @@ const styles = StyleSheet.create({
   headerPillText: { color: '#1F2937', fontWeight: '600', fontSize: 12 },
   headerPillPrimary: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#2563EB' },
   headerPillPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  footerActions: { flexDirection: 'row', gap: 12, padding: 12, borderTopWidth: 1 },
+  footerBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 10 },
+  footerBtnText: { fontWeight: '700' },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { marginTop: 8, color: '#9aa0a6' },
   card: {
@@ -135,9 +183,5 @@ const styles = StyleSheet.create({
   body: { color: '#444' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   metaText: { color: '#9aa0a6', fontSize: 12 },
-  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  actionPill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#EEF2F7' },
-  actionText: { color: '#1F2937', fontWeight: '600', fontSize: 12 },
-  actionPillPrimary: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#2563EB' },
-  actionTextPrimary: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  /* per-item action styles removed */
 });

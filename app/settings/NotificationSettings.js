@@ -1,13 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useNotificationsStore } from '../context/NotificationContext';
 
 export default function NotificationSettings() {
   const { t } = useLanguage();
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const { getPrefs, updatePrefs, setLocalPrefs } = useNotificationsStore();
   
   const [pushNotifications, setPushNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -17,9 +21,64 @@ export default function NotificationSettings() {
   const [systemUpdates, setSystemUpdates] = useState(true);
   const [marketingEmails, setMarketingEmails] = useState(false);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const handleSaveSettings = () => {
-    Alert.alert('Success', 'Notification settings saved successfully!');
+  // Build prefs payload from UI state
+  const prefsPayload = useMemo(() => ({
+    master_enabled: !!pushNotifications,
+    push_enabled: !!pushNotifications,
+    email_enabled: !!emailNotifications,
+    types: {
+      email: !!emailNotifications,
+      sms: !!smsAlerts,
+      study: !!studyReminders,
+      content: !!newContent,
+      system: !!systemUpdates,
+      marketing: !!marketingEmails,
+      weekly_digest: !!weeklyDigest,
+    },
+  }), [pushNotifications, emailNotifications, smsAlerts, studyReminders, newContent, systemUpdates, marketingEmails, weeklyDigest]);
+
+  // Apply UI from existing prefs
+  const applyFromPrefs = (p) => {
+    if (!p) return;
+    // prefer push_enabled if present, fallback to master_enabled
+    setPushNotifications(typeof p.push_enabled !== 'undefined' ? !!p.push_enabled : (p.master_enabled !== false));
+    const types = p.types || {};
+    if (typeof p.email_enabled !== 'undefined') setEmailNotifications(!!p.email_enabled);
+    else if (typeof types.email !== 'undefined') setEmailNotifications(!!types.email);
+    if (typeof types.sms !== 'undefined') setSmsAlerts(!!types.sms);
+    if (typeof types.study !== 'undefined') setStudyReminders(!!types.study);
+    if (typeof types.content !== 'undefined') setNewContent(!!types.content);
+    if (typeof types.system !== 'undefined') setSystemUpdates(!!types.system);
+    if (typeof types.marketing !== 'undefined') setMarketingEmails(!!types.marketing);
+    if (typeof types.weekly_digest !== 'undefined') setWeeklyDigest(!!types.weekly_digest);
+  };
+
+  // Load prefs on mount/user change
+  useEffect(() => {
+    if (!user?.id) return;
+    const existing = getPrefs(user.id);
+    if (existing) {
+      applyFromPrefs(existing);
+      return;
+    }
+    // If not cached, rely on NotificationContext initial loader; fallback to defaults
+  }, [user?.id]);
+
+  const handleSaveSettings = async () => {
+    if (!user?.id) return;
+    setSaving(true);
+    try {
+      // Optimistic local update for realtime gating
+      setLocalPrefs(user.id, prefsPayload);
+      const { error } = await updatePrefs(user.id, prefsPayload);
+      if (error) {
+        Alert.alert('Error', 'Failed to save settings. Please try again.');
+      } else {
+        Alert.alert('Success', 'Notification settings saved successfully!');
+      }
+    } finally { setSaving(false); }
   };
 
   const NotificationItem = ({ title, description, value, onValueChange, icon }) => (
@@ -65,7 +124,7 @@ export default function NotificationSettings() {
             title="Push Notifications"
             description="Enable push notifications for real-time updates"
             value={pushNotifications}
-            onValueChange={setPushNotifications}
+            onValueChange={(v) => setPushNotifications(v)}
             icon="phone-portrait-outline"
           />
           
@@ -73,7 +132,7 @@ export default function NotificationSettings() {
             title="Study Reminders"
             description="Get reminded about your study schedule and goals"
             value={studyReminders}
-            onValueChange={setStudyReminders}
+            onValueChange={(v) => setStudyReminders(v)}
             icon="time-outline"
           />
           
@@ -81,7 +140,7 @@ export default function NotificationSettings() {
             title="New Content Available"
             description="Notifications when new study materials are added"
             value={newContent}
-            onValueChange={setNewContent}
+            onValueChange={(v) => setNewContent(v)}
             icon="library-outline"
           />
         </View>
@@ -96,7 +155,7 @@ export default function NotificationSettings() {
             title="Email Notifications"
             description="Important updates and announcements via email"
             value={emailNotifications}
-            onValueChange={setEmailNotifications}
+            onValueChange={(v) => setEmailNotifications(v)}
             icon="mail-outline"
           />
           
@@ -104,7 +163,7 @@ export default function NotificationSettings() {
             title="Weekly Digest"
             description="Weekly summary of your progress and new content"
             value={weeklyDigest}
-            onValueChange={setWeeklyDigest}
+            onValueChange={(v) => setWeeklyDigest(v)}
             icon="calendar-outline"
           />
           
@@ -112,7 +171,7 @@ export default function NotificationSettings() {
             title="Marketing Emails"
             description="Promotional offers and educational tips"
             value={marketingEmails}
-            onValueChange={setMarketingEmails}
+            onValueChange={(v) => setMarketingEmails(v)}
             icon="megaphone-outline"
           />
         </View>
@@ -127,7 +186,7 @@ export default function NotificationSettings() {
             title="SMS Alerts"
             description="Critical security alerts via SMS"
             value={smsAlerts}
-            onValueChange={setSmsAlerts}
+            onValueChange={(v) => setSmsAlerts(v)}
             icon="chatbox-outline"
           />
           
@@ -135,7 +194,7 @@ export default function NotificationSettings() {
             title="System Updates"
             description="App updates and maintenance notifications"
             value={systemUpdates}
-            onValueChange={setSystemUpdates}
+            onValueChange={(v) => setSystemUpdates(v)}
             icon="settings-outline"
           />
         </View>
@@ -147,9 +206,9 @@ export default function NotificationSettings() {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveSettings}>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSaveSettings} disabled={saving}>
           <Ionicons name="checkmark-circle" size={20} color="#fff" />
-          <Text style={styles.saveButtonText}>Save Notification Settings</Text>
+          <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Notification Settings'}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

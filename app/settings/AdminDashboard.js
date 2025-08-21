@@ -22,6 +22,8 @@ export default function AdminDashboard() {
     storageUsed: 67.3
   });
 
+  // Notification setup panel removed; status now lives inside SystemNotifications
+
   const QuickStatCard = ({ title, value, icon, color, subtitle }) => (
     <View style={[styles.statCard, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}>
       <View style={styles.statHeader}>
@@ -104,6 +106,8 @@ export default function AdminDashboard() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
+
+        {/* Notification setup banner removed */}
         
         <View style={styles.actionsContainer}>
           <QuickActionCard

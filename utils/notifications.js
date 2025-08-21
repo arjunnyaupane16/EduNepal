@@ -5,17 +5,52 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Persistent keys
+const SERVER_URL_KEY = 'serverUrl';
+const NOTIFICATIONS_ENABLED_KEY = 'notifications:enabled';
+
+// Helpers to get/set global notifications enabled flag (default true)
+export async function getNotificationsEnabled() {
+  try {
+    const v = await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY);
+    if (v === null || v === undefined) return true;
+    return v === 'true';
+  } catch { return true; }
+}
+
+export async function setNotificationsEnabled(enabled) {
+  try {
+    await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, enabled ? 'true' : 'false');
+  } catch {}
+}
+
+// Apply side effects when toggling notifications
+export async function applyNotificationsEnabledSideEffects(enabled) {
+  try {
+    if (!enabled) {
+      // Cancel all local scheduled notifications (skip on web)
+      if (Platform.OS !== 'web') {
+        await Notifications.cancelAllScheduledNotificationsAsync();
+      }
+    } else {
+      // No-op here; registration is handled elsewhere when needed
+    }
+  } catch {}
+}
+
 // Configure how notifications are handled when app is foregrounded
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async () => {
+    const enabled = await getNotificationsEnabled();
+    return {
+      shouldShowAlert: !!enabled,
+      shouldPlaySound: !!enabled,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 // Server URL helpers
-const SERVER_URL_KEY = 'serverUrl';
 export async function getServerUrl() {
   // 1) User-saved value
   try {
@@ -36,6 +71,10 @@ export async function saveServerUrl(url) {
 
 export async function registerForPushNotificationsAsync() {
   try {
+    const enabled = await getNotificationsEnabled();
+    if (!enabled) {
+      return null;
+    }
     if (!Device.isDevice) {
       console.log('Push notifications require a physical device');
       return null;
@@ -96,6 +135,13 @@ export async function registerForPushNotificationsAsync() {
 }
 
 export async function scheduleLocalRandomNotification(message, title = 'EduNepal') {
+  const enabled = await getNotificationsEnabled();
+  if (!enabled) return -1;
+  // Not supported on web; safely no-op
+  if (Platform.OS === 'web') {
+    console.warn('[notifications] scheduleLocalRandomNotification is not supported on web. Skipping.');
+    return 0;
+  }
   const delaySeconds = Math.floor(Math.random() * 86400); // 0..86399
   const trigger = { seconds: delaySeconds, channelId: 'default' };
   await Notifications.scheduleNotificationAsync({

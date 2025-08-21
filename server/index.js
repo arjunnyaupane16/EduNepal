@@ -1,19 +1,43 @@
 // Minimal Express server to register Expo push tokens and schedule a broadcast
 // Run with: npm run server (starts node server/index.js)
 
+// Load env vars early
+try { require('dotenv').config(); } catch {}
 const express = require('express');
 const { Expo } = require('expo-server-sdk');
 const nodemailer = require('nodemailer');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const expo = new Expo();
 const PORT = process.env.PORT || 4000;
 
+// Supabase service client (requires env SUPABASE_URL and SUPABASE_SERVICE_KEY)
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+} else {
+  console.warn('[Server] SUPABASE_URL or SUPABASE_SERVICE_KEY not set. Admin notification endpoints will be disabled.');
+}
+
 // In-memory token store. In production, use a DB.
 const tokens = new Set();
 const emails = new Set();
+// In-memory broadcast history for admin visibility
+// Each entry: { id, mode: 'now'|'random'|'daily', title, message, status: 'scheduled'|'sent', scheduledAt?, sentAt? }
+const broadcastHistory = [];
 
 app.use(express.json());
+// Simple CORS for dev and web usage
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 
 // Register or update a push token
 app.post('/register-token', (req, res) => {
@@ -148,6 +172,10 @@ app.post('/broadcast-random', async (req, res) => {
   const delaySeconds = Math.floor(Math.random() * 86400); // 0..86399
   const scheduledAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
 
+  // Log scheduled broadcast
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  broadcastHistory.unshift({ id, mode: 'random', title, message, status: 'scheduled', scheduledAt, recipients: { tokens: tokenCount, emails: emailCount } });
+
   setTimeout(async () => {
     try {
       // Push broadcast
@@ -177,6 +205,8 @@ app.post('/broadcast-random', async (req, res) => {
           });
         }
       }
+      // Log sent event
+      broadcastHistory.unshift({ id: `${id}-sent`, mode: 'random', title, message, status: 'sent', sentAt: new Date().toISOString(), recipients: { tokens: tokens.size, emails: emails.size } });
       // Optionally: clean up invalid tokens by querying receipts later
     } catch (err) {
       console.error('Broadcast send error:', err);
@@ -193,9 +223,61 @@ app.post('/broadcast-now', async (req, res) => {
     const { title = 'EduNepal', message } = req.body || {};
     if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
     await sendBroadcastNow({ title, message });
-    return res.json({ ok: true, tokens: tokens.size, emails: emails.size, sentAt: new Date().toISOString() });
+    const sentAt = new Date().toISOString();
+    // Log sent now
+    broadcastHistory.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, mode: 'now', title, message, status: 'sent', sentAt, recipients: { tokens: tokens.size, emails: emails.size } });
+    return res.json({ ok: true, tokens: tokens.size, emails: emails.size, sentAt });
   } catch (err) {
     console.error('broadcast-now error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// Admin: create a notification row (all | user:<id> | segment:<id>)
+// Body: { title: string, body: string, audience?: string, data?: object, created_by?: uuid }
+app.post('/admin/notifications', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'Supabase not configured' });
+    const { title, body, audience = 'all', data = {}, created_by = null } = req.body || {};
+    if (!title || !body) return res.status(400).json({ ok: false, error: 'title and body are required' });
+
+    const { data: inserted, error } = await supabase
+      .from('notifications')
+      .insert([{ title, body, audience, data, created_by }])
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Insert notification error:', error);
+      return res.status(500).json({ ok: false, error: 'Failed to insert notification' });
+    }
+
+    // Best-effort: archive notification JSON to Storage bucket "Notifications"
+    // Path: notifications/<id>.json
+    try {
+      const payload = {
+        id: inserted.id,
+        title: inserted.title,
+        body: inserted.body,
+        audience: inserted.audience,
+        data: inserted.data || {},
+        created_by: inserted.created_by || null,
+        created_at: inserted.created_at,
+      };
+      const buf = Buffer.from(JSON.stringify(payload, null, 2));
+      const uploadRes = await supabase.storage
+        .from('Notifications')
+        .upload(`notifications/${inserted.id}.json`, buf, { contentType: 'application/json', upsert: true });
+      if (uploadRes?.error) {
+        console.warn('[Storage] Upload notification archive failed:', uploadRes.error.message || uploadRes.error);
+      }
+    } catch (e) {
+      console.warn('[Storage] Exception archiving notification:', e?.message || e);
+    }
+
+    return res.json({ ok: true, notification: inserted });
+  } catch (err) {
+    console.error('admin/notifications error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
@@ -230,6 +312,8 @@ app.post('/schedule-daily', (req, res) => {
       dailyTimer = setTimeout(async () => {
         try {
           await sendBroadcastNow({ title, message });
+          // Log sent event for daily
+          broadcastHistory.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, mode: 'daily', title, message, status: 'sent', sentAt: new Date().toISOString(), recipients: { tokens: tokens.size, emails: emails.size } });
         } catch (e) {
           console.error('daily send error:', e);
         } finally {
@@ -243,12 +327,17 @@ app.post('/schedule-daily', (req, res) => {
     setTimeout(async () => {
       try {
         await sendBroadcastNow({ title, message });
+        // Log first send
+        broadcastHistory.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, mode: 'daily', title, message, status: 'sent', sentAt: new Date().toISOString(), recipients: { tokens: tokens.size, emails: emails.size } });
       } catch (e) {
         console.error('daily first send error:', e);
       } finally {
         scheduleNext();
       }
     }, initialDelay);
+
+    // Log scheduled daily
+    broadcastHistory.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, mode: 'daily', title, message, status: 'scheduled', scheduledAt: first.toISOString(), time: dailyTime, recipients: { tokens: tokens.size, emails: emails.size } });
 
     return res.json({ ok: true, firstRunAt: first.toISOString(), time: dailyTime });
   } catch (err) {
@@ -260,5 +349,40 @@ app.post('/schedule-daily', (req, res) => {
 app.get('/', (_req, res) => res.send('EduNepal Push Server running'));
 app.get('/health', (_req, res) => {
   res.json({ ok: true, uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+// Stats for admin UI
+app.get('/stats', (_req, res) => {
+  res.json({ ok: true, tokens: tokens.size, emails: emails.size, dailyTime });
+});
+// Broadcast history (most recent first)
+app.get('/broadcast-history', (_req, res) => {
+  res.json({ ok: true, history: broadcastHistory.slice(0, 100) });
+});
+// Delete ALL broadcast history
+app.delete('/broadcast-history', (_req, res) => {
+  try {
+    broadcastHistory.length = 0;
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Failed to clear history' });
+  }
+});
+// Delete selected history items
+app.post('/broadcast-history/delete', (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    if (ids.length === 0) return res.status(400).json({ ok: false, error: 'ids required' });
+    const set = new Set(ids.map(String));
+    const before = broadcastHistory.length;
+    for (let i = broadcastHistory.length - 1; i >= 0; i--) {
+      if (set.has(String(broadcastHistory[i]?.id))) {
+        broadcastHistory.splice(i, 1);
+      }
+    }
+    const removed = before - broadcastHistory.length;
+    res.json({ ok: true, removed });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Failed to delete items' });
+  }
 });
 app.listen(PORT, () => console.log(`Push server listening on http://localhost:${PORT}`));
