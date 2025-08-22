@@ -1,19 +1,29 @@
 // scripts/upload-images-to-supabase.js
 // Upload all image assets from assets/images to Supabase Storage under images/
 // Uses @supabase/supabase-js (already in dependencies)
+// Loads env from project .env automatically
 
+try { require('dotenv').config(); } catch {}
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const appConfig = require('../app.json');
 
 const { supabaseUrl, supabaseAnonKey, storageBucket } = appConfig.expo.extra || {};
-if (!supabaseUrl || !supabaseAnonKey || !storageBucket) {
-  console.error('Missing supabaseUrl, supabaseAnonKey, or storageBucket in app.json -> expo.extra');
+// Prefer service role key for server-side uploads to bypass RLS safely.
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+if (!supabaseUrl || (!supabaseAnonKey && !serviceRoleKey) || !storageBucket) {
+  console.error('Missing supabaseUrl, storageBucket, or keys (set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY env, or provide supabaseAnonKey in app.json with proper RLS)');
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const keyUsed = serviceRoleKey || supabaseAnonKey;
+if (serviceRoleKey) {
+  console.log('Using service key from environment for uploads (SUPABASE_SERVICE_ROLE_KEY/SUPABASE_SERVICE_KEY).');
+} else {
+  console.log('Using anon key from app.json for uploads (ensure RLS insert policy exists).');
+}
+const supabase = createClient(supabaseUrl, keyUsed);
 const localDir = path.resolve(__dirname, '..', 'assets', 'images');
 const targetFolder = 'images';
 

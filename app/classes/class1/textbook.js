@@ -22,6 +22,11 @@ const SUPABASE_URL = Constants?.expoConfig?.extra?.supabaseUrl || 'https://eovzq
 const STORAGE_BUCKET = Constants?.expoConfig?.extra?.storageBucket || 'ElearnNepal';
 const imageBase = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/images`;
 
+// PDFs are stored in a different Supabase project/bucket
+const PDF_SUPABASE_URL = Constants?.expoConfig?.extra?.pdfSupabaseUrl || 'https://apqysgfnanmvkracjgtr.supabase.co';
+const PDF_STORAGE_BUCKET = Constants?.expoConfig?.extra?.pdfStorageBucket || 'Arjun Nyaupane';
+const pdfBase = `${PDF_SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(PDF_STORAGE_BUCKET)}`;
+
 const coverImages = {
   A: { uri: `${imageBase}/A.png` },
   B: { uri: `${imageBase}/B.png` },
@@ -41,7 +46,7 @@ export default function Textbook() {
   const textbooks = [
     {
       title: 'दोस्रो भाषाका रूपमा नेपाली भाषा सिकाइका लागि शिक्षण स्रोतसामग्री',
-      url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Teaching%20resources%20for%20learning%20Nepali%20as%20a%20second%20language%20(1).pdf',
+      url: `${pdfBase}/Teaching%20resources%20for%20learning%20Nepali%20as%20a%20second%20language.pdf`,
       cover: coverImages.A,
       units: [
         { title: '१. परिचय', page: 5 },
@@ -57,7 +62,7 @@ export default function Textbook() {
     },
     {
       title: 'मेरो नेपाली - कक्षा १',
-      url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//My%20Nepali%20Grade%201.pdf',
+      url: `${pdfBase}/My%20Nepali%20Grade%201.pdf`,
       cover: coverImages.B,
       units: [
         { title: 'पाठ १: म र मेरो परिवार', page: 7 },
@@ -78,7 +83,7 @@ export default function Textbook() {
     },
     {
       title: 'My English Grade 1',
-      url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1/book3_mero_english.pdf',
+      url: `${pdfBase}/book3_mero_english.pdf`,
       cover: coverImages.C,
       units: [
         { title: 'Unit 1: Me and My Family', page: 8 },
@@ -97,7 +102,7 @@ export default function Textbook() {
     },
     {
       title: 'मेरो गणित (आत्म-अध्ययन सामग्री) कक्षा १',
-      url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//My%20Mathematics%20(Self%20-%20Learning%20Material)%20Grade%20-%201.pdf',
+      url: `${pdfBase}/My%20Mathematics%20(Self%20-%20Learning%20Material)%20Grade%20-%201.pdf`,
       cover: coverImages.D,
       units: [
         { title: 'पाठ १: आकार, प्रकार र स्थान', page: 11 },
@@ -127,7 +132,7 @@ export default function Textbook() {
     },
     {
       title: 'मेरो गणित - कक्षा १',
-      url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//MY%20Mathematics%20Grade%201.pdf',
+      url: `${pdfBase}/MY%20Mathematics%20Grade%201.pdf`,
       cover: coverImages.E,
       units: [
         { title: ' १: आकार प्रकार र स्थान', page: 7 },
@@ -157,7 +162,7 @@ export default function Textbook() {
     },
     {
       title: 'My Mathematics (English Translation) - Grade 1',
-      url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//My%20Mathematics%20-%20Grade%201%20(English%20Translation).pdf',
+      url: `${pdfBase}/My%20Mathematics%20-%20Grade%201%20(English%20Translation).pdf`,
       cover: coverImages.F,
       units: [
         { title: ' 1: Shape and Size, and Space', page: 7 },
@@ -187,7 +192,7 @@ export default function Textbook() {
     },
     {
       title: 'हाम्रो सेरोफेरो-कक्षा १',
-      url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Hamro%20Serophero%20Grade%201.pdf',
+      url: `${pdfBase}/Hamro%20Serophero%20Grade%201.pdf`,
       cover: coverImages.G,
       units: [
         { title: 'पाठ १: म र मेरो परिवार', page: 6 },

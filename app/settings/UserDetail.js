@@ -1,17 +1,15 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getSupabase } from '../services/supabaseClient';
-import Constants from 'expo-constants';
-import { useLanguage } from '../context/LanguageContext';
 
 export default function UserDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { users, setUserRole, resetPassword, removeUser, user: me } = useAuth();
-  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [u, setU] = useState(null);
 
@@ -135,7 +133,7 @@ export default function UserDetail() {
   if (!isAdmin) {
     return (
       <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={{ fontSize: 16, fontWeight: '600' }}>{t('adminAccessDenied')}</Text>
+        <Text style={{ fontSize: 16, fontWeight: '600' }}>Access denied. Admins only.</Text>
       </View>
     );
   }
@@ -144,7 +142,7 @@ export default function UserDetail() {
     return (
       <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
         <ActivityIndicator />
-        <Text style={{ marginTop: 8 }}>{t('loading')}</Text>
+        <Text style={{ marginTop: 8 }}>Loading…</Text>
       </View>
     );
   }
@@ -158,7 +156,7 @@ export default function UserDetail() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: '#f9fafb' }]}> 
+    <View style={[styles.container, { backgroundColor: '#f9fafb' }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 6 }}>
           <Ionicons name="chevron-back" size={22} color="#111827" />
@@ -166,7 +164,7 @@ export default function UserDetail() {
         <Text style={[styles.title, { color: '#111827' }]}>User Detail</Text>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        <View style={[styles.card, { backgroundColor: '#fff', borderColor: '#e5e7eb' }]}> 
+        <View style={[styles.card, { backgroundColor: '#fff', borderColor: '#e5e7eb' }]}>
           <Text style={[styles.name, { color: '#111827' }]}>{u.fullName}</Text>
           <Text style={[styles.sub, { color: '#6b7280' }]}>{u.email} · @{u.username}</Text>
           <Text style={[styles.sub, { color: '#6b7280' }]}>

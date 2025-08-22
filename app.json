@@ -12,7 +12,9 @@
       "serverUrl": "http://30.30.4.15:4000",
       "supabaseUrl": "https://eovzqcjgqmlaubzwwqpx.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdnpxY2pncW1sYXViend3cXB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MDQ5NTcsImV4cCI6MjA2OTE4MDk1N30.SrjN2KDWZD7vCtqF54H8OUmgo6LKfUALEpD2LFjKU5c",
-      "storageBucket": "Images"
+      "storageBucket": "Images",
+      "pdfSupabaseUrl": "https://apqysgfnanmvkracjgtr.supabase.co",
+      "pdfStorageBucket": "Arjun Nyaupane"
     },
     "ios": {
       "supportsTablet": true,

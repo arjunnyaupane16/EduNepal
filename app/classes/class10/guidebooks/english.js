@@ -10,81 +10,87 @@ import {
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import Constants from 'expo-constants';
 import { useTheme } from '../../../context/ThemeContext';
 import { router } from 'expo-router';
 
+// PDFs are now hosted in a separate Supabase project/bucket
+const PDF_SUPABASE_URL = Constants?.expoConfig?.extra?.pdfSupabaseUrl || 'https://apqysgfnanmvkracjgtr.supabase.co';
+const PDF_STORAGE_BUCKET = Constants?.expoConfig?.extra?.pdfStorageBucket || 'Arjun Nyaupane';
+const pdfBase = `${PDF_SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(PDF_STORAGE_BUCKET)}`;
+
 const englishUnits = [
- {
+  {
     title: 'Unit 1: Current Affairs and Issues',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Class%2010%20English%20Unit%201Exercise%20(1).pdf',
+    url: `${pdfBase}/Class%2010%20English%20Unit%201Exercise.pdf`,
   },
   {
     title: 'Unit 2: Festivals And Celebrations',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//English%20Unit%202.pdf',
+    url: `${pdfBase}/English%20Unit%202.pdf`,
   },
   {
     title: 'Unit 3: Health & Wellness',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//English%20Unit%203.pdf',
+    url: `${pdfBase}/English%20Unit%203.pdf`,
   },
   {
     title: 'Unit 4: Work & Leisure',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%204%20English.pdf',
+    url: `${pdfBase}/Unit%204%20English.pdf`,
   },
   {
     title: 'Unit 5: Science & Experiments',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//English%20Unit%205.pdf',
+    url: `${pdfBase}/English%20Unit%205.pdf`,
   },
   {
     title: 'Unit 6: Food & Cuisine',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%206%20english.pdf',
+    url: `${pdfBase}/Unit%206%20english.pdf`,
   },
   {
     title: 'Unit 7: Cyber Security',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%207%20Cyber%20Security%20Exercise.pdf',
+    url: `${pdfBase}/Unit%207%20Cyber%20Security%20Exercise.pdf`,
   },
   {
     title: 'Unit 8: Hobbies & Interest',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%208%20English.pdf',
+    url: `${pdfBase}/Unit%208%20English.pdf`,
   },
   {
     title: 'Unit 9: History & Culture',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%209%20English.pdf',
+    url: `${pdfBase}/Unit%209%20English.pdf`,
   },
   {
     title: 'Unit 10: Games & Sports',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2010English.pdf',
+    url: `${pdfBase}/Unit%2010English.pdf`,
   },
   {
     title: 'Unit 11: Ethics & Morality',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2011%20Englishl.pdf',
+    url: `${pdfBase}/Unit%2011%20Englishl.pdf`,
   },
   {
     title: 'Unit 12: Nature & Development',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2012%20English.pdf',
+    url: `${pdfBase}/Unit%2012%20English.pdf`,
   },
   {
     title: 'Unit 13: Population & Migration',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2013%20English.pdf',
+    url: `${pdfBase}/Unit%2013%20English.pdf`,
   },
   {
     title: 'Unit 14: Travel & Adventure',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2014%20English.pdf',
+    url: `${pdfBase}/Unit%2014%20English.pdf`,
   },
   {
     title: 'Unit 15: People & Places',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2015%20English.pdf',
+    url: `${pdfBase}/Unit%2015%20English.pdf`,
   },
   {
     title: 'Unit 16: Success & Celebration',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2016%20Englishh.pdf',
+    url: `${pdfBase}/Unit%2016%20Englishh.pdf`,
   },
   {
     title: 'Unit 17: Countries & Towns',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2017%20Englishh.pdf',
+    url: `${pdfBase}/Unit%2017%20Englishh.pdf`,
   },
   {
     title: 'Unit 18: Media & Entertainment',
-    url: 'https://hnfwgeqypfyfvdjlroqy.supabase.co/storage/v1/object/public/class1//Unit%2018%20English.pdf',
+    url: `${pdfBase}/Unit%2018%20English.pdf`,
   },
 ];
 

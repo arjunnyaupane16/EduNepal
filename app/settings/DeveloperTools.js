@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, TextInput } from 'react-native';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { getServerUrl, registerForPushNotificationsAsync, saveServerUrl, scheduleLocalRandomNotification } from '../../utils/notifications';
 import { useAuth } from '../context/AuthContext';
-import { registerForPushNotificationsAsync, scheduleLocalRandomNotification, getServerUrl, saveServerUrl } from '../../utils/notifications';
+import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function DeveloperTools() {
   const { theme } = useTheme();
@@ -124,7 +124,7 @@ export default function DeveloperTools() {
       <Text style={[styles.title, { color: theme.text }]}>{t('developerTools')}</Text>
 
       {/* Device Info */}
-      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Device</Text>
         {Object.entries(deviceInfo).map(([k, v]) => (
           <View key={k} style={[styles.row, { borderColor: theme.border }]}>
@@ -135,7 +135,7 @@ export default function DeveloperTools() {
       </View>
 
       {/* Expo Constants */}
-      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Expo Constants</Text>
         <TouchableOpacity onPress={showConstants} style={[styles.btn, { borderColor: theme.border }]}>
           <Text style={{ color: theme.text }}>Show in Console</Text>
@@ -143,7 +143,7 @@ export default function DeveloperTools() {
       </View>
 
       {/* Network Ping */}
-      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Notification Server URL</Text>
         <TextInput
           value={serverUrl}
@@ -155,14 +155,14 @@ export default function DeveloperTools() {
           autoCorrect={false}
         />
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-          <TouchableOpacity onPress={persistServerUrl} style={[styles.btn, { borderColor: theme.border }]}> 
+          <TouchableOpacity onPress={persistServerUrl} style={[styles.btn, { borderColor: theme.border }]}>
             <Text style={{ color: theme.text }}>{savingServer ? 'Saving…' : 'Save URL'}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Network Ping */}
-      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Network Ping</Text>
         <TextInput
           value={pingUrl}
@@ -185,7 +185,7 @@ export default function DeveloperTools() {
       </View>
 
       {/* AsyncStorage */}
-      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>AsyncStorage</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
           <TouchableOpacity onPress={loadKV} style={[styles.btn, { borderColor: theme.border }]}>
@@ -196,7 +196,7 @@ export default function DeveloperTools() {
           </TouchableOpacity>
         </View>
         {kvPairs.map(({ key, value }) => (
-          <View key={key} style={[styles.row, { borderColor: theme.border }]}> 
+          <View key={key} style={[styles.row, { borderColor: theme.border }]}>
             <Text style={[styles.kvKey, { color: theme.text }]} numberOfLines={1}>{key}</Text>
             <Text style={[styles.kvValue, { color: theme.secondaryText }]} numberOfLines={2}>{String(value)}</Text>
           </View>
@@ -207,7 +207,7 @@ export default function DeveloperTools() {
       </View>
 
       {/* Push Notifications */}
-      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Push Notifications</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity onPress={registerPush} style={[styles.btn, { borderColor: theme.border }]}>
