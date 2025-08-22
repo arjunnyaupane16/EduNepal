@@ -1,17 +1,17 @@
-import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNotificationsStore } from '../context/NotificationContext';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useNavigation } from 'expo-router';
 
 export default function NotificationsScreen() {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { getForUser, clearForUser, markAllRead, markAllUnread, refreshForUser, loadMoreForUser, markRead, markUnread } = useNotificationsStore();
+  const { getForUser, clearForUser, markAllRead, markAllUnread, refreshForUser, loadMoreForUser, markRead, markUnread, removeManyForUser } = useNotificationsStore();
   const navigation = useNavigation();
   const items = useMemo(() => (user ? getForUser(user.id) : []), [user?.id, getForUser]);
   const allRead = useMemo(() => items.length > 0 && items.every(n => n.read), [items]);
@@ -25,6 +25,11 @@ export default function NotificationsScreen() {
     if (!user?.id) return;
     refreshForUser(user.id);
   }, [user?.id, refreshForUser]);
+
+  // Reset selection when user changes
+  useEffect(() => {
+    setSelected(new Set());
+  }, [user?.id]);
 
   const onRefresh = useCallback(async () => {
     if (!user?.id) return;
@@ -75,6 +80,21 @@ export default function NotificationsScreen() {
     clearSelection();
   }, [selected, user?.id, markRead, markUnread, clearSelection]);
 
+  const deleteSelected = useCallback(() => {
+    if (!user?.id || selected.size === 0) return;
+    const ids = Array.from(selected);
+    Alert.alert(t('delete') || 'Delete', t('confirm') || 'Are you sure?', [
+      { text: t('cancel') || 'Cancel', style: 'cancel' },
+      {
+        text: t('delete') || 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try { await removeManyForUser(user.id, ids); } finally { clearSelection(); }
+        }
+      }
+    ]);
+  }, [user?.id, selected, removeManyForUser, clearSelection, t]);
+
   if (!user) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
@@ -84,10 +104,10 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }] }>
-      <View style={[styles.header, { borderColor: theme.border }]}> 
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { borderColor: theme.border }]}>
         <TouchableOpacity onPress={() => (navigation?.canGoBack?.() ? navigation.goBack() : navigation.navigate('(authenticated)'))} style={styles.headerBack}>
-          <Ionicons name  ="chevron-back" size={22} color={theme.text} />
+          <Ionicons name="chevron-back" size={22} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>{t('notifications')}</Text>
         <TouchableOpacity
@@ -111,7 +131,8 @@ export default function NotificationsScreen() {
         <FlatList
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
           data={items}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
+          extraData={selected}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           refreshing={refreshing}
           onRefresh={onRefresh}
@@ -142,7 +163,7 @@ export default function NotificationsScreen() {
                 <View style={[
                   styles.card,
                   { backgroundColor: theme.card, shadowColor: theme.shadow, borderWidth: isSelected ? 2 : 0, borderColor: isSelected ? (theme.primary || '#2563EB') : 'transparent' }
-                ] }>
+                ]}>
                   <View style={styles.cardRow}>
                     <View style={styles.iconWrap}>
                       <Ionicons name={item.read ? 'notifications-outline' : 'notifications'} size={20} color={item.read ? '#9aa0a6' : '#4285F4'} />
@@ -171,12 +192,15 @@ export default function NotificationsScreen() {
       )}
 
       {selected.size > 0 ? (
-        <View style={[styles.footerActions, { borderColor: theme.border, backgroundColor: theme.cardBackground || '#fff' }]}> 
+        <View style={[styles.footerActions, { borderColor: theme.border, backgroundColor: theme.cardBackground || '#fff' }]}>
           <TouchableOpacity onPress={() => markSelected(true)} style={[styles.footerBtn, { backgroundColor: '#2563EB' }]}>
             <Text style={[styles.footerBtnText, { color: '#fff' }]}>{t('markAsRead') || 'Mark Read'} ({selected.size})</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => markSelected(false)} style={[styles.footerBtn, { backgroundColor: '#EEF2F7' }]}>
             <Text style={[styles.footerBtnText, { color: '#1F2937' }]}>{t('markAsUnread') || 'Mark Unread'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={deleteSelected} style={[styles.footerBtn, { backgroundColor: '#FECACA' }]}>
+            <Text style={[styles.footerBtnText, { color: '#991B1B' }]}>{t('deleteSelected') || 'Delete Selected'}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={clearSelection} style={[styles.footerBtn, { backgroundColor: '#FEE2E2' }]}>
             <Text style={[styles.footerBtnText, { color: '#B91C1C' }]}>{t('clearSelection') || 'Clear Selection'}</Text>
@@ -184,12 +208,12 @@ export default function NotificationsScreen() {
         </View>
       ) : (
         items.length > 0 && (
-          <View style={[styles.footerActions, { borderColor: theme.border, backgroundColor: theme.cardBackground || '#fff' }]}> 
+          <View style={[styles.footerActions, { borderColor: theme.border, backgroundColor: theme.cardBackground || '#fff' }]}>
             <TouchableOpacity
               onPress={() => (allRead ? markAllUnread(user.id) : markAllRead(user.id))}
               style={[styles.footerBtn, { backgroundColor: allRead ? '#EEF2F7' : '#2563EB' }]}
             >
-              <Text style={[styles.footerBtnText, { color: allRead ? '#1F2937' : '#fff' }]}> 
+              <Text style={[styles.footerBtnText, { color: allRead ? '#1F2937' : '#fff' }]}>
                 {allRead ? t('markAllAsUnread') : t('markAllAsRead')}
               </Text>
             </TouchableOpacity>
@@ -198,7 +222,7 @@ export default function NotificationsScreen() {
                 { text: t('cancel') || 'Cancel', style: 'cancel' },
                 { text: t('clearAll') || 'Clear All', style: 'destructive', onPress: () => clearForUser(user.id) },
               ]);
-            }} style={[styles.footerBtn, { backgroundColor: '#FEE2E2' }]}> 
+            }} style={[styles.footerBtn, { backgroundColor: '#FEE2E2' }]}>
               <Text style={[styles.footerBtnText, { color: '#B91C1C' }]}>{t('clearAll')}</Text>
             </TouchableOpacity>
           </View>

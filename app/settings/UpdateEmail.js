@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -22,6 +22,8 @@ export default function UpdateEmail() {
   const [loading, setLoading] = useState(false);
   const [codeRequested, setCodeRequested] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0); // seconds
+  const timerRef = useRef(null);
   
   // Simple client-side email validation
   const validateEmail = (email) => {
@@ -68,7 +70,49 @@ export default function UpdateEmail() {
       return;
     }
     setCodeRequested(true);
+    setResendCooldown(60);
     Alert.alert('Verification Required', 'A verification code was sent to your new email. Enter it below to confirm the change.');
+  };
+
+  // countdown side effect
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    timerRef.current && clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => timerRef.current && clearInterval(timerRef.current);
+  }, [resendCooldown]);
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+    if (!validateEmail(newEmail)) {
+      Alert.alert('Error', 'Enter a valid new email before resending');
+      return;
+    }
+    if (newEmail !== confirmEmail) {
+      Alert.alert('Error', 'New email and confirmation do not match');
+      return;
+    }
+    if (!password) {
+      Alert.alert('Error', 'Enter current password to proceed');
+      return;
+    }
+    setLoading(true);
+    const resp = await requestEmailChangeFlow(newEmail, password);
+    setLoading(false);
+    if (!resp?.success) {
+      Alert.alert('Error', resp?.message || 'Failed to resend code');
+      return;
+    }
+    setResendCooldown(60);
+    Alert.alert('Code Resent', 'We resent the verification code to your new email.');
   };
 
   const handleConfirmEmail = async () => {
@@ -231,6 +275,20 @@ export default function UpdateEmail() {
                   autoCapitalize="none"
                 />
               </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <TouchableOpacity
+                onPress={handleResendCode}
+                disabled={resendCooldown > 0 || loading}
+                style={{ paddingVertical: 8, paddingHorizontal: 10, opacity: resendCooldown > 0 || loading ? 0.6 : 1 }}
+              >
+                <Text style={{ color: theme.primary }}>
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                </Text>
+              </TouchableOpacity>
+              <Text style={{ color: theme.secondaryText }}>
+                Enter the 6-digit code sent to {newEmail}
+              </Text>
             </View>
             <TouchableOpacity
               style={[styles.updateButton, { opacity: loading ? 0.7 : 1 }]}

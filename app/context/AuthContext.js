@@ -224,6 +224,50 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Forgot password: request code to provided email and confirm without needing current password
+  const requestPasswordReset = async ({ email }) => {
+    try {
+      const target = String(email || '').trim();
+      if (!target) return { success: false, message: 'Email required' };
+      return await sendVerificationCode({ purpose: 'reset_password', email: target });
+    } catch (e) {
+      return { success: false, message: 'Unexpected error requesting reset' };
+    }
+  };
+
+  const confirmPasswordReset = async ({ email, code, newPassword }) => {
+    try {
+      const target = String(email || '').trim();
+      if (!target) return { success: false, message: 'Email required' };
+      if (!newPassword || newPassword.length < 6) return { success: false, message: 'Password too short' };
+      const v = await verifyCode({ purpose: 'reset_password', code, email: target });
+      if (!v.success) return v;
+      if (!supabase) return { success: false, message: 'Supabase unavailable' };
+      // Update by email; support both uuid id and email match as fallback
+      let updateRes = { data: null, error: null };
+      try {
+        updateRes = await supabase
+          .from('users')
+          .update({ password: newPassword })
+          .eq('email', target)
+          .select('*')
+          .single();
+      } catch (e) {
+        updateRes = { data: null, error: e };
+      }
+      if (updateRes.error) return { success: false, message: updateRes.error?.message || 'Failed to update password' };
+      const updated = fromDbUser(updateRes.data || {});
+      // If the reset email matches current session user, sync local state
+      if (user?.email && user.email.toLowerCase() === target.toLowerCase()) {
+        setUser(prev => ({ ...(prev || {}), ...updated }));
+        try { await saveUserProfileJsonToStorage(updated); } catch {}
+      }
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: 'Unexpected error confirming reset' };
+    }
+  };
+
   // Delete profile image: clear DB fields and try to remove stored files
   const deleteProfileImage = async () => {
     try {

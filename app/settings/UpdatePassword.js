@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 export default function UpdatePassword() {
   const { t } = useLanguage();
   const { theme } = useTheme();
-  const { requestVerificationCode, changePasswordWithVerification } = useAuth();
+  const { requestVerificationCode, changePasswordWithVerification, requestPasswordReset, confirmPasswordReset, user } = useAuth();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight?.() || 0;
   
@@ -24,6 +24,9 @@ export default function UpdatePassword() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // Forgot password mode (no current password required)
+  const [forgotMode, setForgotMode] = useState(false);
+  const [email, setEmail] = useState(user?.email || '');
 
   const validatePassword = (password) => {
     const minLength = password.length >= 8;
@@ -77,6 +80,30 @@ export default function UpdatePassword() {
     Alert.alert('Verification Required', 'We sent a verification code to your email. Enter it below to confirm the password change.');
   };
 
+  const handleForgotRequest = async () => {
+    if (!email || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+    if (!passwordValidation.isValid) {
+      Alert.alert('Error', 'Please ensure your new password meets all requirements');
+      return;
+    }
+    setLoading(true);
+    const r = await requestPasswordReset(email);
+    setLoading(false);
+    if (!r?.success) {
+      Alert.alert('Error', r?.message || 'Failed to send reset code');
+      return;
+    }
+    setCodeRequested(true);
+    Alert.alert('Check Email', 'We sent a password reset code to your email. Enter it below to complete the reset.');
+  };
+
   const handleConfirmChange = async () => {
     if (!verificationCode || verificationCode.length < 4) {
       Alert.alert('Error', 'Enter the verification code');
@@ -96,6 +123,30 @@ export default function UpdatePassword() {
         setConfirmPassword('');
         setVerificationCode('');
         setCodeRequested(false);
+      }}
+    ]);
+  };
+
+  const handleConfirmForgot = async () => {
+    if (!verificationCode || verificationCode.length < 4) {
+      Alert.alert('Error', 'Enter the verification code');
+      return;
+    }
+    setLoading(true);
+    const r = await confirmPasswordReset(email, verificationCode, newPassword);
+    setLoading(false);
+    if (!r?.success) {
+      Alert.alert('Error', r?.message || 'Failed to reset password');
+      return;
+    }
+    Alert.alert('Success', 'Password reset successfully!', [
+      { text: 'OK', onPress: () => {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setVerificationCode('');
+        setCodeRequested(false);
+        setForgotMode(false);
       }}
     ]);
   };
@@ -137,31 +188,53 @@ export default function UpdatePassword() {
       </View>
 
       <View style={styles.content}>
-        <View style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Current Password</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Current Password *</Text>
-            <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
-              <Ionicons name="lock-closed-outline" size={20} color={theme.placeholder} />
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder="Enter current password"
-                placeholderTextColor={theme.placeholder}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                secureTextEntry={!showCurrentPassword}
-              />
-              <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-                <Ionicons 
-                  name={showCurrentPassword ? "eye-off" : "eye"} 
-                  size={20} 
-                  color={theme.placeholder} 
+        {!forgotMode ? (
+          <View style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Current Password</Text>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.text }]}>Current Password *</Text>
+              <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={theme.placeholder} />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Enter current password"
+                  placeholderTextColor={theme.placeholder}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  secureTextEntry={!showCurrentPassword}
                 />
-              </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
+                  <Ionicons name={showCurrentPassword ? "eye-off" : "eye"} size={20} color={theme.placeholder} />
+                </TouchableOpacity>
+              </View>
             </View>
+            <TouchableOpacity onPress={() => { setForgotMode(true); setCodeRequested(false); setVerificationCode(''); }}>
+              <Text style={{ color: theme.primary, textAlign: 'right' }}>Forgot password? Reset without current password</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        ) : (
+          <View style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Forgot Password</Text>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.text }]}>Account Email *</Text>
+              <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                <Ionicons name="mail-outline" size={20} color={theme.placeholder} />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Enter your account email"
+                  placeholderTextColor={theme.placeholder}
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => { setForgotMode(false); setCodeRequested(false); setVerificationCode(''); }}>
+              <Text style={{ color: theme.primary, textAlign: 'right' }}>Back to change with current password</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>New Password</Text>
@@ -232,7 +305,7 @@ export default function UpdatePassword() {
         {!codeRequested ? (
           <TouchableOpacity
             style={[styles.updateButton, { opacity: loading ? 0.7 : 1, backgroundColor: theme.primary }]}
-            onPress={handleUpdatePassword}
+            onPress={forgotMode ? handleForgotRequest : handleUpdatePassword}
             disabled={loading}
           >
             {loading ? (
@@ -240,7 +313,7 @@ export default function UpdatePassword() {
             ) : (
               <>
                 <Ionicons name="shield-checkmark" size={20} color="#fff" />
-                <Text style={styles.buttonText}>Request Verification Code</Text>
+                <Text style={styles.buttonText}>{forgotMode ? 'Send Reset Code' : 'Request Verification Code'}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -248,11 +321,11 @@ export default function UpdatePassword() {
           <>
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: theme.text }]}>Verification Code *</Text>
-              <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
+              <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.background }]}> 
                 <Ionicons name="key" size={20} color={theme.placeholder} />
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
-                  placeholder="Enter the code from your email"
+                  placeholder={forgotMode ? 'Enter the code from your email' : 'Enter the code from your email'}
                   placeholderTextColor={theme.placeholder}
                   value={verificationCode}
                   onChangeText={setVerificationCode}
@@ -262,7 +335,7 @@ export default function UpdatePassword() {
             </View>
             <TouchableOpacity
               style={[styles.updateButton, { opacity: loading ? 0.7 : 1, backgroundColor: theme.primary }]}
-              onPress={handleConfirmChange}
+              onPress={forgotMode ? handleConfirmForgot : handleConfirmChange}
               disabled={loading}
             >
               {loading ? (
@@ -270,7 +343,7 @@ export default function UpdatePassword() {
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.buttonText}>Confirm Password Change</Text>
+                  <Text style={styles.buttonText}>{forgotMode ? 'Confirm Reset' : 'Confirm Password Change'}</Text>
                 </>
               )}
             </TouchableOpacity>
