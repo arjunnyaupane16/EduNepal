@@ -4,12 +4,14 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { registerForPushNotificationsAsync, scheduleLocalRandomNotification, getServerUrl, saveServerUrl } from '../../utils/notifications';
 
 export default function DeveloperTools() {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const isAdmin = user?.role === 'Administrator' || user?.username === 'admin';
 
@@ -40,7 +42,7 @@ export default function DeveloperTools() {
   if (!isAdmin) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.text }}>Access denied. Admins only.</Text>
+        <Text style={{ color: theme.text }}>{t('adminAccessDenied')}</Text>
       </View>
     );
   }
@@ -119,7 +121,7 @@ export default function DeveloperTools() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.background }} contentContainerStyle={{ padding: 16 }}>
-      <Text style={[styles.title, { color: theme.text }]}>Developer Tools</Text>
+      <Text style={[styles.title, { color: theme.text }]}>{t('developerTools')}</Text>
 
       {/* Device Info */}
       <View style={[styles.card, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border }]}> 

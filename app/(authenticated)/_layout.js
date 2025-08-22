@@ -6,10 +6,12 @@ import { useEffect } from 'react';
 import CustomDrawerContent from "../../components/CustomDrawerContent";
 import { useAuth } from "../context/AuthContext";
 import { useNotificationsStore } from "../context/NotificationContext";
+import { useLanguage } from "../context/LanguageContext";
 
 export default function AuthenticatedLayout() {
   const { isLoggedIn, user } = useAuth();
   const { addForUser } = useNotificationsStore();
+  const { t } = useLanguage();
 
   // Save incoming notifications for the logged in user
   useEffect(() => {
@@ -32,10 +34,10 @@ export default function AuthenticatedLayout() {
       screenOptions={{ headerShown: false }}
       drawerContent={(props) => <CustomDrawerContent {...props} />}
     >
-      <Drawer.Screen name="index" options={{ title: "Home" }} />
-      <Drawer.Screen name="Profile" options={{ title: "Profile" }} />
-      <Drawer.Screen name="settings" options={{ title: "Settings" }} />
-      <Drawer.Screen name="notifications" options={{ title: "Notifications" }} />
+      <Drawer.Screen name="index" options={{ title: t('home') }} />
+      <Drawer.Screen name="Profile" options={{ title: t('profile') }} />
+      <Drawer.Screen name="settings" options={{ title: t('settings') }} />
+      <Drawer.Screen name="notifications" options={{ title: t('notifications') }} />
     </Drawer>
   );
 }

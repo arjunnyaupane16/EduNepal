@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TextInput, TouchableOpacity, Alert, Share } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
 export default function SystemLogs() {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const isAdmin = user?.role === 'Administrator' || user?.username === 'admin';
 
@@ -58,7 +60,7 @@ export default function SystemLogs() {
   if (!isAdmin) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.text }}>Access denied. Admins only.</Text>
+        <Text style={{ color: theme.text }}>{t('adminAccessDenied')}</Text>
       </View>
     );
   }
@@ -95,7 +97,7 @@ export default function SystemLogs() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={[styles.title, { color: theme.text }]}>System Logs</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('systemLogs')}</Text>
 
         <View style={[styles.toolbar, { borderColor: theme.border }]}>
           <TextInput

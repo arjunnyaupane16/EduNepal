@@ -1,6 +1,8 @@
-
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
+
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -10,6 +12,8 @@ export default function UpdatePassword() {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const { requestVerificationCode, changePasswordWithVerification } = useAuth();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight?.() || 0;
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -112,7 +116,18 @@ export default function UpdatePassword() {
   );
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? Math.max(80, (insets?.top || 0) + (headerHeight || 0)) : 0}
+    >
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 120 : 40 }}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+        keyboardShouldPersistTaps="always"
+        contentInsetAdjustmentBehavior="always"
+      >
       <View style={styles.header}>
         <Ionicons name="lock-closed" size={60} color={theme.primary} />
         <Text style={[styles.title, { color: theme.text }]}>Change Password</Text>
@@ -262,7 +277,8 @@ export default function UpdatePassword() {
           </>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

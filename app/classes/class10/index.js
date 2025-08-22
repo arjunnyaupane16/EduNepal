@@ -10,7 +10,7 @@ import styles from '../../../styles/ClassScreenStyles';
 
 export default function Class10() {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
 
   const cardColors = [
     { bg: '#e0f2fe', icon: '#0ea5e9' }, // Textbook (blue)
@@ -22,7 +22,7 @@ export default function Class10() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Top Navigation Bar with Profile */}
-      <TopNavBar title="Class 10" showMenu={true} showNotifications={true} />
+      <TopNavBar title={`${t('class')} 10`} showMenu={true} showNotifications={true} />
 
       {/* Search Box */}
       <View style={[styles.searchContainer, {
@@ -31,7 +31,7 @@ export default function Class10() {
       }]}>
         <MaterialIcons name="search" size={20} color={theme.placeholder} />
         <TextInput
-          placeholder="Search for books, notes..."
+          placeholder={t('searchBooksNotes')}
           placeholderTextColor={theme.placeholder}
           style={[styles.searchInput, { color: theme.text }]}
         />
@@ -57,11 +57,11 @@ export default function Class10() {
             <View style={[styles.iconWrapper, { backgroundColor: cardColors[0].bg }]}>
               <MaterialIcons name="menu-book" size={20} color={cardColors[0].icon} />
             </View>
-            <Text style={[styles.title, { color: theme.text }]}>Textbooks</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('textbooks')}</Text>
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-              CDC-approved books in English & Nepali
+              {t('cdcApprovedBooks')}
             </Text>
-            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}> 
               <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
             </View>
           </TouchableOpacity>
@@ -76,11 +76,11 @@ export default function Class10() {
             <View style={[styles.iconWrapper, { backgroundColor: cardColors[1].bg }]}>
               <MaterialIcons name="book-online" size={20} color={cardColors[1].icon} />
             </View>
-            <Text style={[styles.title, { color: theme.text }]}>Guidebooks</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('guidebooks')}</Text>
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-              Chapter-wise notes, explanations, and exam
+              {t('chapterWiseNotes')}
             </Text>
-            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}> 
               <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
             </View>
           </TouchableOpacity>
@@ -88,18 +88,18 @@ export default function Class10() {
           <TouchableOpacity
             activeOpacity={0.85}
             style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: cardColors[2].icon, borderWidth: 2 }]}
-            onPress={() => router.push('/classes/class10/previouspapers')}
+            onPress={() => router.push('/classes/class10/previous-papers')}
             accessibilityRole="button"
             accessibilityLabel={`${t('previousPapers')} - ${t('lastYearsExams')}`}
           >
             <View style={[styles.iconWrapper, { backgroundColor: cardColors[2].bg }]}>
               <MaterialIcons name="event-note" size={20} color={cardColors[2].icon} />
             </View>
-            <Text style={[styles.title, { color: theme.text }]}>Previous Papers</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('previousPapers')}</Text>
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-              Access last 3–5 years' Board/Final exam
+              {t('lastYearsExams')}
             </Text>
-            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}> 
               <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
             </View>
           </TouchableOpacity>
@@ -107,25 +107,25 @@ export default function Class10() {
           <TouchableOpacity
             activeOpacity={0.85}
             style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: cardColors[3].icon, borderWidth: 2 }]}
-            onPress={() => router.push('/classes/class10/practicequestions')}
+            onPress={() => router.push('/classes/class10/practice-questions')}
             accessibilityRole="button"
             accessibilityLabel={`${t('practiceQuestions')} - ${t('expectedQuestions')}`}
           >
             <View style={[styles.iconWrapper, { backgroundColor: cardColors[3].bg }]}>
               <MaterialIcons name="check-circle-outline" size={20} color={cardColors[3].icon} />
             </View>
-            <Text style={[styles.title, { color: theme.text }]}>Practice Questions</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('practiceQuestions')}</Text>
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-              Expected questions for exams: short, long
+              {t('expectedQuestions')}
             </Text>
-            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}> 
               <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
             </View>
           </TouchableOpacity>
         </View>
 
         <Text style={[styles.recentActivityHeader, { color: theme.text }]}>
-          Recent Activity
+          {t('recentActivity')}
         </Text>
         {/* Add recent activity content here if needed */}
       </ScrollView>

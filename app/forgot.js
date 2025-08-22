@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform, KeyboardAvoidingView, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "./context/AuthContext";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 export default function Forgot() {
   const [email, setEmail] = useState("");
@@ -12,6 +14,9 @@ export default function Forgot() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { requestPasswordReset, confirmPasswordReset } = useAuth();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
 
   const handleSend = async () => {
     const e = String(email || '').trim();
@@ -39,7 +44,17 @@ export default function Forgot() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+    <ScrollView
+      contentContainerStyle={[styles.container, { paddingBottom: Platform.OS === 'ios' ? 120 : 30 }]}
+      keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+      keyboardShouldPersistTaps="always"
+      contentInsetAdjustmentBehavior="always"
+    >
       <Text style={styles.title}>Forgot Password</Text>
 
       {step === 1 ? (
@@ -91,7 +106,8 @@ export default function Forgot() {
       <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
         <Text style={styles.linkText}>Back to Login</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

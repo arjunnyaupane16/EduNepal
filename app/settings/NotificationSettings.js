@@ -96,9 +96,9 @@ export default function NotificationSettings() {
       setLocalPrefs(user.id, prefsPayload);
       const { error } = await updatePrefs(user.id, prefsPayload);
       if (error) {
-        Alert.alert('Error', 'Failed to save settings. Please try again.');
+        Alert.alert(t('error'), t('failedToSaveSettings'));
       } else {
-        Alert.alert('Success', 'Notification settings saved successfully!');
+        Alert.alert(t('success'), t('notifSettingsSaved'));
       }
     } finally { setSaving(false); }
   };
@@ -129,22 +129,22 @@ export default function NotificationSettings() {
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <Ionicons name="notifications" size={60} color="#3b82f6" />
-        <Text style={[styles.title, { color: theme.text }]}>Notification Settings</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('notificationSettingsTitle')}</Text>
         <Text style={[styles.subtitle, { color: theme.text }]}>
-          Manage how you receive notifications and updates
+          {t('notificationSettingsSubtitle')}
         </Text>
       </View>
 
       <View style={styles.content}>
         <View style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Push Notifications</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('pushNotifications')}</Text>
           <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
-            Receive instant notifications on your device
+            {t('pushNotificationsDesc')}
           </Text>
           
           <NotificationItem
-            title="Push Notifications"
-            description="Enable push notifications for real-time updates"
+            title={t('pushNotifications')}
+            description={t('pushNotificationsDesc')}
             value={pushNotifications}
             onValueChange={async (v) => {
               try {
@@ -162,16 +162,16 @@ export default function NotificationSettings() {
           />
           
           <NotificationItem
-            title="Study Reminders"
-            description="Get reminded about your study schedule and goals"
+            title={t('studyReminders')}
+            description={t('studyRemindersDesc')}
             value={studyReminders}
             onValueChange={(v) => setStudyReminders(v)}
             icon="time-outline"
           />
           
           <NotificationItem
-            title="New Content Available"
-            description="Notifications when new study materials are added"
+            title={t('newContentAvailable')}
+            description={t('newContentAvailableDesc')}
             value={newContent}
             onValueChange={(v) => setNewContent(v)}
             icon="library-outline"
@@ -179,30 +179,30 @@ export default function NotificationSettings() {
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Email Notifications</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('emailNotificationsSection')}</Text>
           <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
-            Receive updates and information via email
+            {t('emailNotificationsDesc')}
           </Text>
           
           <NotificationItem
-            title="Email Notifications"
-            description="Important updates and announcements via email"
+            title={t('emailNotifications')}
+            description={t('emailNotificationsDesc')}
             value={emailNotifications}
             onValueChange={(v) => setEmailNotifications(v)}
             icon="mail-outline"
           />
           
           <NotificationItem
-            title="Weekly Digest"
-            description="Weekly summary of your progress and new content"
+            title={t('weeklyDigest')}
+            description={t('weeklyDigestDesc')}
             value={weeklyDigest}
             onValueChange={(v) => setWeeklyDigest(v)}
             icon="calendar-outline"
           />
           
           <NotificationItem
-            title="Marketing Emails"
-            description="Promotional offers and educational tips"
+            title={t('marketingEmails')}
+            description={t('marketingEmailsDesc')}
             value={marketingEmails}
             onValueChange={(v) => setMarketingEmails(v)}
             icon="megaphone-outline"
@@ -210,22 +210,22 @@ export default function NotificationSettings() {
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.cardBackground || '#fff' }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>System & Security</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('systemSecuritySection')}</Text>
           <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
-            Important system and security notifications
+            {t('systemSecuritySectionDesc')}
           </Text>
           
           <NotificationItem
-            title="SMS Alerts"
-            description="Critical security alerts via SMS"
+            title={t('smsAlerts')}
+            description={t('smsAlertsDesc')}
             value={smsAlerts}
             onValueChange={(v) => setSmsAlerts(v)}
             icon="chatbox-outline"
           />
           
           <NotificationItem
-            title="System Updates"
-            description="App updates and maintenance notifications"
+            title={t('systemUpdates')}
+            description={t('systemUpdatesDesc')}
             value={systemUpdates}
             onValueChange={(v) => setSystemUpdates(v)}
             icon="settings-outline"
@@ -235,13 +235,13 @@ export default function NotificationSettings() {
         <View style={[styles.infoBox, { backgroundColor: '#f0f9ff', borderColor: '#0ea5e9' }]}>
           <Ionicons name="information-circle" size={20} color="#0ea5e9" />
           <Text style={[styles.infoText, { color: '#0c4a6e' }]}>
-            You can change these settings anytime. Some notifications may be required for security purposes.
+            {t('infoChangeAnytime')}
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveSettings} disabled={saving}>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSaveSettings} disabled={saving} accessibilityRole="button" accessibilityLabel={t('saveNotificationSettings')}>
           <Ionicons name="checkmark-circle" size={20} color="#fff" />
-          <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Notification Settings'}</Text>
+          <Text style={styles.saveButtonText}>{saving ? t('saving') : t('saveNotificationSettings')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

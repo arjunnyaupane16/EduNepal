@@ -7,7 +7,7 @@ import { useLanguage } from '../app/context/LanguageContext';
 import { useTheme } from '../app/context/ThemeContext';
 
 const DrawerItemBox = ({ icon, label, desc, onPress, theme }) => (
-  <TouchableOpacity onPress={onPress} style={[styles.box, { backgroundColor: theme.background }]}>
+  <TouchableOpacity onPress={onPress} style={[styles.box, { backgroundColor: theme.background }]} accessibilityRole="button" accessibilityLabel={`${label}. ${desc}`}>
     <View style={styles.row}>
       <MaterialIcons name={icon} size={22} color={theme.text} />
       <View style={styles.textWrap}>
@@ -40,7 +40,7 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="home"
         label={t('home')}
-        desc="Navigate to the main dashboard"
+        desc={t('drawerDescHome')}
         onPress={() => router.push('/(authenticated)')}
         theme={theme}
       />
@@ -48,7 +48,7 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="person"
         label={t('profile')}
-        desc="View your profile information"
+        desc={t('drawerDescProfile')}
         onPress={() => router.push('/(authenticated)/Profile')}
         theme={theme}
       />
@@ -56,7 +56,7 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="settings"
         label={t('settings')}
-        desc="Manage application preferences"
+        desc={t('drawerDescSettings')}
         onPress={() => router.push('/settings')}
         theme={theme}
       />
@@ -64,7 +64,7 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="language"
         label={t('language')}
-        desc="Change the application language"
+        desc={t('drawerDescLanguage')}
         onPress={() => router.push('/settings/LanguageRegion')}
         theme={theme}
       />
@@ -72,7 +72,7 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="download"
         label={t('downloads')}
-        desc="View your downloaded content"
+        desc={t('drawerDescDownloads')}
         onPress={() => router.push('/downloads')}
         theme={theme}
       />
@@ -80,7 +80,7 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="palette"
         label={t('theme')}
-        desc="Switch light/dark mode"
+        desc={t('drawerDescTheme')}
         onPress={() => router.push('/theme')}
         theme={theme}
       />
@@ -88,11 +88,11 @@ export default function CustomDrawerContent(props) {
       {/* Admin section */}
       {(user?.role === 'Administrator' || ['admin', '_arjunnn9y8a7u6pa4n3e2'].includes(user?.username)) && (
         <View>
-          <Text style={[styles.section, { color: theme.text }]}>Admin</Text>
+          <Text style={[styles.section, { color: theme.text }]}>{t('admin')}</Text>
           <DrawerItemBox
             icon="campaign"
-            label="Notification Center"
-            desc="View history and manage notifications"
+            label={t('adminNotificationCenter')}
+            desc={t('adminNotificationCenterDesc')}
             onPress={() => router.push('/settings/SystemNotifications')}
             theme={theme}
           />
@@ -104,7 +104,7 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="help-outline"
         label={t('helpSupport')}
-        desc="Find answers or contact support"
+        desc={t('drawerDescHelpSupport')}
         onPress={() => router.push('/settings/HelpSupport')}
         theme={theme}
       />
@@ -112,7 +112,7 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="gavel"
         label={t('termsConditions')}
-        desc="Read terms and policies"
+        desc={t('drawerDescTerms')}
         onPress={() => router.push('/settings/Terms')}
         theme={theme}
       />
@@ -120,13 +120,13 @@ export default function CustomDrawerContent(props) {
       <DrawerItemBox
         icon="contact-page"
         label={t('contactUs')}
-        desc="Reach out for queries"
+        desc={t('drawerDescContactUs')}
         onPress={() => router.push('/settings/Contact')}
         theme={theme}
       />
 
       {/* Logout Button */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} accessibilityRole="button" accessibilityLabel={t('logout')}>
         <Ionicons name="log-out-outline" size={18} color="#fff" />
         <Text style={styles.logoutText}>{t('logout')}</Text>
       </TouchableOpacity>

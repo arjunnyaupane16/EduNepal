@@ -30,7 +30,7 @@ export default function TopNavBar({ title, showMenu = true, showNotifications = 
   };
 
   // Get user display name and initials with fallbacks
-  const displayName = user?.fullName || user?.name || 'User';
+  const displayName = user?.fullName || user?.name || t('userFallback');
   const userInitials = getInitials(displayName);
 
   return (

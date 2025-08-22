@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform, KeyboardAvoidingView } from "react-native";
 import { useAuth } from "./context/AuthContext";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 export default function Signup() {
   const [fullName, setFullName] = useState("");
@@ -17,6 +19,9 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { signup } = useAuth();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -83,7 +88,17 @@ export default function Signup() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+    <ScrollView
+      contentContainerStyle={[styles.container, { paddingBottom: Platform.OS === 'ios' ? 120 : 30 }]}
+      keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+      keyboardShouldPersistTaps="always"
+      contentInsetAdjustmentBehavior="always"
+    >
       <Text style={styles.title}>Create Account</Text>
       <Text style={styles.subtitle}>Join EduNepal today</Text>
 
@@ -218,6 +233,7 @@ export default function Signup() {
         <Text style={styles.linkText}>Already have an account? Login</Text>
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

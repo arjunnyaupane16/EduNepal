@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { useEffect } from "react";
 import { LanguageProvider } from "./context/LanguageContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -8,6 +8,7 @@ import { registerForPushNotificationsAsync } from "../utils/notifications";
 import * as Notifications from 'expo-notifications';
 import { useAuth } from './context/AuthContext';
 import { useNotificationsStore } from './context/NotificationContext';
+import { getSupabase } from './services/supabaseClient';
 
 function NotificationBridge() {
   const { user } = useAuth();
@@ -32,6 +33,20 @@ function NotificationBridge() {
   return null;
 }
 
+function RouteTracker() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (!supabase || !user?.id || !pathname) return;
+    (async () => {
+      try { await supabase.from('users').update({ current_route: pathname }).eq('id', user.id); } catch {}
+      try { await supabase.from('users').update({ currentRoute: pathname }).eq('id', user.id); } catch {}
+    })();
+  }, [pathname, user?.id]);
+  return null;
+}
+
 export default function RootLayout() {
   return (
     <AuthProvider>
@@ -39,6 +54,7 @@ export default function RootLayout() {
         <LanguageProvider>
           <NotificationProvider>
             <NotificationBridge />
+            <RouteTracker />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="login" options={{ headerShown: false }} />

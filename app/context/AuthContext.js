@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
@@ -561,6 +562,38 @@ export const AuthProvider = ({ children }) => {
     })();
   }, [isLoggedIn, user]);
 
+  // Heartbeat: mark user as active by updating last_seen/lastSeen periodically and on app resume
+  useEffect(() => {
+    if (!isLoggedIn || !user?.id || !supabase) return;
+    let cancelled = false;
+    let intervalId = null;
+    const touch = async () => {
+      if (cancelled) return;
+      const nowIso = new Date().toISOString();
+      try {
+        // Try snake_case first
+        await supabase.from('users').update({ last_seen: nowIso }).eq('id', user.id);
+      } catch {}
+      try {
+        // Fallback camelCase
+        await supabase.from('users').update({ lastSeen: nowIso }).eq('id', user.id);
+      } catch {}
+    };
+    // initial touch
+    touch();
+    // repeat every 2 minutes
+    intervalId = setInterval(touch, 2 * 60 * 1000);
+    // on app resume
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') touch();
+    });
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+      try { sub?.remove && sub.remove(); } catch {}
+    };
+  }, [isLoggedIn, user?.id, supabase]);
+
   const login = async (credentials) => {
     const { username, email, identifier, password, mode } = credentials || {};
     console.log('Login attempt:', { username, email, identifier, mode });
@@ -1071,8 +1104,27 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    // Do not silently fall back to local; keep DB as source of truth
-    return { success: false, error: 'Supabase unavailable or update failed' };
+    // Local fallback: update in-memory cache when Supabase is unavailable, id is not a UUID,
+    // or the remote update failed. This keeps the admin UI functional for demo/local users.
+    try {
+      if (Object.keys(safeUpdates).length === 0) return { success: true };
+      let updatedUser = null;
+      setUsers(list => {
+        const next = list.map(u => {
+          if (String(u.id) !== String(id)) return u;
+          const merged = { ...u, ...safeUpdates };
+          updatedUser = merged;
+          return merged;
+        });
+        return next;
+      });
+      if (updatedUser && user && String(user.id) === String(id)) {
+        setUser(updatedUser);
+      }
+      return { success: true, user: updatedUser };
+    } catch (e) {
+      return { success: false, error: e?.message || 'Local update failed' };
+    }
   };
 
   const addUser = (newUser) => {

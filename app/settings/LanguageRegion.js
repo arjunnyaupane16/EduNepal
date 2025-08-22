@@ -14,7 +14,7 @@ const LanguageRegion = () => {
       <View style={styles.header}>
         <Ionicons name="language" size={60} color="#3b82f6" />
         <Text style={[styles.title, { color: theme.text }]}>{t('language')}</Text>
-        <Text style={[styles.subtitle, { color: theme.text }]}>Choose your preferred language</Text>
+        <Text style={[styles.subtitle, { color: theme.text }]}>{t('choosePreferredLanguage')}</Text>
       </View>
 
       <View style={styles.languageList}>
@@ -55,7 +55,7 @@ const LanguageRegion = () => {
 
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: theme.text }]}>
-          Language changes will be applied immediately across the entire app.
+          {t('languageChangeAppliedImmediately')}
         </Text>
       </View>
     </ScrollView>

@@ -10,28 +10,28 @@ export default function PrivacyPolicy() {
 
   const sections = [
     {
-      title: 'Information We Collect',
-      content: 'We collect information you provide directly to us, such as when you create an account, use our services, or contact us for support.',
+      title: t('privacyInfoWeCollectTitle'),
+      content: t('privacyInfoWeCollectContent'),
     },
     {
-      title: 'How We Use Your Information',
-      content: 'We use the information we collect to provide, maintain, and improve our services, process transactions, and communicate with you.',
+      title: t('privacyHowWeUseTitle'),
+      content: t('privacyHowWeUseContent'),
     },
     {
-      title: 'Information Sharing',
-      content: 'We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in this policy.',
+      title: t('privacySharingTitle'),
+      content: t('privacySharingContent'),
     },
     {
-      title: 'Data Security',
-      content: 'We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.',
+      title: t('privacySecurityTitle'),
+      content: t('privacySecurityContent'),
     },
     {
-      title: 'Your Rights',
-      content: 'You have the right to access, update, or delete your personal information. You may also opt out of certain communications from us.',
+      title: t('privacyYourRightsTitle'),
+      content: t('privacyYourRightsContent'),
     },
     {
-      title: 'Changes to This Policy',
-      content: 'We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page.',
+      title: t('privacyChangesTitle'),
+      content: t('privacyChangesContent'),
     },
   ];
 
@@ -39,14 +39,13 @@ export default function PrivacyPolicy() {
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <Ionicons name="shield-checkmark" size={60} color="#3b82f6" />
-        <Text style={[styles.title, { color: theme.text }]}>Privacy Policy</Text>
-        <Text style={[styles.subtitle, { color: theme.text }]}>Last updated: January 2024</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('privacyPolicy')}</Text>
+        <Text style={[styles.subtitle, { color: theme.text }]}>{t('privacyUpdated')}</Text>
       </View>
 
       <View style={styles.content}>
         <Text style={[styles.intro, { color: theme.text }]}>
-          At EduNepal, we are committed to protecting your privacy and ensuring the security of your personal information. 
-          This Privacy Policy explains how we collect, use, and safeguard your data.
+          {t('privacyIntro')}
         </Text>
 
         {sections.map((section, index) => (
@@ -58,7 +57,7 @@ export default function PrivacyPolicy() {
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.text }]}>
-            If you have any questions about this Privacy Policy, please contact us at privacy@edunepal.com
+            {t('privacyContactFooter')}
           </Text>
         </View>
       </View>

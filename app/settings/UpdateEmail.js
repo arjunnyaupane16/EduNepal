@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -10,6 +12,8 @@ export default function UpdateEmail() {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const { user, requestEmailChangeFlow, confirmEmailChangeFlow } = useAuth();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight?.() || 0;
   
   const [currentEmail, setCurrentEmail] = useState(user?.email || '');
   const [newEmail, setNewEmail] = useState('');
@@ -91,7 +95,18 @@ export default function UpdateEmail() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? Math.max(80, (insets?.top || 0) + (headerHeight || 0)) : 0}
+    >
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 120 : 40 }}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+        keyboardShouldPersistTaps="always"
+        contentInsetAdjustmentBehavior="always"
+      >
       <View style={styles.header}>
         <Ionicons name="mail" size={60} color="#3b82f6" />
         <Text style={[styles.title, { color: theme.text }]}>Update Email Address</Text>
@@ -234,7 +249,8 @@ export default function UpdateEmail() {
           </>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

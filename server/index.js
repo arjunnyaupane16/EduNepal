@@ -169,7 +169,7 @@ app.post('/auth/send-code', async (req, res) => {
     const e = String(email || '').trim().toLowerCase();
     const p = String(purpose || '').trim();
     if (!e || !e.includes('@')) return res.status(400).json({ ok: false, error: 'Invalid email' });
-    if (!p || !['change_password', 'change_email', 'delete_account'].includes(p)) {
+    if (!p || !['change_password', 'change_email', 'delete_account', 'elevate_role'].includes(p)) {
       return res.status(400).json({ ok: false, error: 'Invalid purpose' });
     }
     const code = Math.floor(100000 + Math.random() * 900000).toString();

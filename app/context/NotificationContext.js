@@ -16,8 +16,8 @@ export function NotificationProvider({ children }) {
     if (!userId || !notification) return;
     setByUser(prev => {
       const list = prev[userId] || [];
-      return { 
-        ...prev, 
+      return {
+        ...prev,
         [userId]: [
           { id: Date.now().toString(), date: new Date().toISOString(), read: false, ...notification },
           ...list
@@ -43,6 +43,39 @@ export function NotificationProvider({ children }) {
       ...current,
       types: { ...(current.types || {}), cleared_at: nowIso }
     };
+    try { await updatePrefs(userId, nextPrefs); } catch {}
+  };
+
+  // Remove a single notification for a user (hide/dismiss)
+  const removeForUser = async (userId, id) => {
+    if (!userId || !id) return;
+    // Remove locally
+    setByUser(prev => {
+      const list = prev[userId] || [];
+      return { ...prev, [userId]: list.filter(n => n.id !== id) };
+    });
+    // Persist dismissal in prefs so it stays hidden across refreshes
+    const current = prefsRef.current[userId] || {};
+    const dismissed = { ...(current.types?.dismissed || {}), [id]: true };
+    const nextPrefs = { ...current, types: { ...(current.types || {}), dismissed } };
+    try { await updatePrefs(userId, nextPrefs); } catch {}
+  };
+
+  // Remove multiple selected notifications
+  const removeManyForUser = async (userId, ids = []) => {
+    if (!userId || !Array.isArray(ids) || ids.length === 0) return;
+    // Remove locally
+    setByUser(prev => {
+      const list = prev[userId] || [];
+      const idSet = new Set(ids);
+      return { ...prev, [userId]: list.filter(n => !idSet.has(n.id)) };
+    });
+    // Persist dismissals
+    const current = prefsRef.current[userId] || {};
+    const prevDismissed = current.types?.dismissed || {};
+    const nextDismissed = { ...prevDismissed };
+    ids.forEach(id => { nextDismissed[id] = true; });
+    const nextPrefs = { ...current, types: { ...(current.types || {}), dismissed: nextDismissed } };
     try { await updatePrefs(userId, nextPrefs); } catch {}
   };
 
@@ -116,6 +149,11 @@ export function NotificationProvider({ children }) {
     if (clearedAt) {
       const cutoff = new Date(clearedAt).getTime();
       list = list.filter(n => new Date(n.date).getTime() > cutoff);
+    }
+    // Exclude individually dismissed notifications
+    const dismissed = prefs?.types?.dismissed || {};
+    if (dismissed && typeof dismissed === 'object') {
+      list = list.filter(n => !dismissed[n.id]);
     }
     if (prefs && prefs.types) {
       list = list.filter(n => {
@@ -243,6 +281,9 @@ export function NotificationProvider({ children }) {
         // Ignore inserts older than last clear
         const clearedAt = prefs?.types?.cleared_at;
         if (clearedAt && new Date(n.created_at).getTime() <= new Date(clearedAt).getTime()) return;
+        // Ignore if this notification was dismissed earlier
+        const dismissed = prefs?.types?.dismissed || {};
+        if (dismissed && dismissed[n.id]) return;
         console.log('[Notifications] Realtime insert received:', { id: n.id, audience: n.audience });
         setByUser(prev => {
           const list = prev[user.id] || [];
@@ -301,7 +342,7 @@ export function NotificationProvider({ children }) {
     } catch { return false; }
   };
 
-  const value = useMemo(() => ({ addForUser, clearForUser, getForUser, getCount, getUnreadCount, markRead, markUnread, markAllRead, markAllUnread, refreshForUser, loadMoreForUser, getPrefs, updatePrefs, setLocalPrefs }), [byUser, prefsByUser]);
+  const value = useMemo(() => ({ addForUser, clearForUser, removeForUser, removeManyForUser, getForUser, getCount, getUnreadCount, markRead, markUnread, markAllRead, markAllUnread, refreshForUser, loadMoreForUser, getPrefs, updatePrefs, setLocalPrefs }), [byUser, prefsByUser]);
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 }
 

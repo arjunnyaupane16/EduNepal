@@ -2,17 +2,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform, KeyboardAvoidingView } from 'react-native';
 import { getServerUrl, saveServerUrl, scheduleLocalRandomNotification, getNotificationsEnabled } from '../../utils/notifications';
 import { getSupabase } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 export default function SystemNotifications() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
   const [title, setTitle] = useState('EduNepal');
   const [message, setMessage] = useState('Study reminder: Open EduNepal today!');
   const [loading, setLoading] = useState(false);
@@ -385,12 +390,17 @@ export default function SystemNotifications() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={{ padding: 20, paddingBottom: 96 }}
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={keyboardVerticalOffset}
     >
-      <Text style={[styles.title, { color: theme.text }]}>System Notifications</Text>
-      <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Send a message to all users. Choose immediate, random-within-24h, or a fixed daily time.</Text>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingBottom: Platform.OS === 'ios' ? 120 : 40 }]}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+        keyboardShouldPersistTaps="always"
+        contentInsetAdjustmentBehavior="always">
 
       {/* Dev: Server URL override */}
       <View style={[styles.card, { backgroundColor: theme.cardBackground, borderColor: theme.border || '#ddd', marginBottom: 8 }]}> 
@@ -778,22 +788,24 @@ export default function SystemNotifications() {
 
       {/* No internal back; use index.js top icon */}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   // Layout & typography
   container: { flex: 1 },
+  content: { padding: 16 },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 8, letterSpacing: 0.2 },
-  subtitle: { fontSize: 13, marginBottom: 16, lineHeight: 18 },
+  subtitle: { fontSize: 13, marginBottom: 12, lineHeight: 18 },
 
   // Inputs
   input: {
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    minHeight: 48,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
     lineHeight: 20,
     textAlignVertical: 'top',
     marginTop: 10,
@@ -801,40 +813,40 @@ const styles = StyleSheet.create({
 
   // Buttons
   button: {
-    marginTop: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  btnText: { color: '#fff', fontWeight: '700', letterSpacing: 0.3 },
-  buttonOutline: {
-    marginTop: 10,
+    marginTop: 14,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  btnText: { color: '#fff', fontWeight: '700', letterSpacing: 0.2 },
+  buttonOutline: {
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
   },
-  btnTextOutline: { fontWeight: '700', letterSpacing: 0.3 },
+  btnTextOutline: { fontWeight: '700', letterSpacing: 0.2 },
   link: { marginTop: 16, alignItems: 'center' },
 
   // Rows & small controls
   row: { flexDirection: 'row', alignItems: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  timeBtn: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderRadius: 10 },
+  timeBtn: { minWidth: 36, alignItems: 'center', paddingVertical: 8, borderWidth: 1, borderRadius: 10 },
 
   // Cards
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 12,
+    padding: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-    marginTop: 16,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+    marginTop: 12,
   },
 
   // Meta
@@ -846,28 +858,28 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     marginRight: 8,
     marginBottom: 8,
-    minHeight: 36,
+    minHeight: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chipText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.4 },
+  chipText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
 
   // Calendar
   calendarHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   calendarHeaderText: { width: `${100/7}%`, textAlign: 'center', fontSize: 12, opacity: 0.8 },
   calendarWeekRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  calendarCell: { width: `${100/7}%`, aspectRatio: 1, borderWidth: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  calendarCell: { width: `${100/7}%`, aspectRatio: 1, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 
   // History list
-  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, borderBottomWidth: 1 },
+  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 6, borderBottomWidth: 1 },
 
   // Action buttons (mobile friendly)
   actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', marginLeft: 12 },
-  actionBtn: { paddingHorizontal: 10, paddingVertical: 8, marginRight: 8, marginTop: 6, borderRadius: 8 },
+  actionBtn: { paddingHorizontal: 8, paddingVertical: 6, marginRight: 8, marginTop: 6, borderRadius: 8 },
   actionText: { fontSize: 13, fontWeight: '600' },
   actionDangerText: { fontSize: 12, fontWeight: '700', color: '#ef4444' },
 });

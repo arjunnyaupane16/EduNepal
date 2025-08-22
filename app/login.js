@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform, KeyboardAvoidingView, ScrollView } from "react-native";
 import { useAuth } from "./context/AuthContext";
 import { useLanguage } from "./context/LanguageContext";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -16,6 +18,9 @@ export default function Login() {
   const router = useRouter();
   const { login } = useAuth();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
 
   const handleLogin = async () => {
     let credentials;
@@ -43,7 +48,17 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+      keyboardShouldPersistTaps="always"
+      contentInsetAdjustmentBehavior="always"
+    >
       <Text style={styles.title}>{t('welcomeBack')}</Text>
 
 
@@ -140,7 +155,8 @@ export default function Login() {
           <Text style={styles.linkText}>{t('forgotPassword')}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

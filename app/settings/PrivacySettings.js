@@ -8,12 +8,14 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, AppState } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const STORE_KEY = 'privacy_prefs_v1';
 
 export default function PrivacySettings() {
   const { theme } = useTheme();
   const router = useRouter();
+  const { t } = useLanguage();
 
   // Core consents
   const [personalizedAds, setPersonalizedAds] = useState(false);
@@ -303,8 +305,8 @@ export default function PrivacySettings() {
       </Section>
 
       <Section title="Policies & Info">
-        <RowAction icon="policy" title="Privacy Policy" subtitle="How we collect and use data" onPress={() => router.push('/settings/PrivacyPolicy')} />
-        <RowAction icon="gavel" title="Terms & Conditions" subtitle="Your rights and responsibilities" onPress={() => router.push('/settings/Terms')} />
+        <RowAction icon="policy" title={t('privacyPolicy')} subtitle={t('privacyPolicySubtitle')} onPress={() => router.push('/settings/PrivacyPolicy')} />
+        <RowAction icon="gavel" title={t('termsConditions')} subtitle={t('termsConditionsSubtitle')} onPress={() => router.push('/settings/Terms')} />
       </Section>
     </ScrollView>
   );

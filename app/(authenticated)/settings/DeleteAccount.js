@@ -1,15 +1,20 @@
 // app/(authenticated)/settings/DeleteAccount.js
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 export default function DeleteAccount() {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const { user, logout } = useAuth();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
   
   const [password, setPassword] = useState('');
   const [confirmText, setConfirmText] = useState('');
@@ -51,7 +56,18 @@ export default function DeleteAccount() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        contentInsetAdjustmentBehavior="always"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+        keyboardShouldPersistTaps="always"
+        contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 120 : 30 }}
+      >
       <View style={styles.header}>
         <Ionicons name="warning" size={60} color="#ef4444" />
         <Text style={[styles.title, { color: theme.text }]}>Delete Account</Text>
@@ -154,7 +170,8 @@ export default function DeleteAccount() {
           )}
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -2,16 +2,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, Platform, KeyboardAvoidingView } from "react-native";
 import { applyNotificationsEnabledSideEffects, setNotificationsEnabled } from "../../utils/notifications";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 export default function Profile() {
   const { user, logout, updateUser, updateUserById, isAdmin, canAdminEditField, uploadProfileImage, deleteProfileImage, getFreshProfileImageUrl, requestUsernameChangeFlow, confirmUsernameChangeFlow, requestEmailChangeFlow, confirmEmailChangeFlow } = useAuth();
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
 
   // Editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -359,7 +364,18 @@ export default function Profile() {
 
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.scrollContainer, { paddingBottom: Platform.OS === 'ios' ? 120 : 30 }]}
+      contentInsetAdjustmentBehavior="always"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+      keyboardShouldPersistTaps="always"
+    >
       {/* Header Section with Profile Picture */}
       <View style={[styles.header, { backgroundColor: theme.primary || '#3b82f6' }]}>
         <TouchableOpacity
@@ -975,6 +991,7 @@ export default function Profile() {
 
       {/* Delete Account Modal moved to Settings */}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,8 +1,10 @@
 // app/settings/DeleteAccount.js
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -10,6 +12,8 @@ export default function DeleteAccount() {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const { user, requestAccountDeletionFlow, confirmAccountDeletionFlow } = useAuth();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight?.() || 0;
 
   const [password, setPassword] = useState('');
   const [confirmText, setConfirmText] = useState('');
@@ -99,7 +103,18 @@ export default function DeleteAccount() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? Math.max(80, (insets?.top || 0) + (headerHeight || 0)) : 0}
+    >
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 120 : 40 }}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'none' : 'on-drag'}
+        keyboardShouldPersistTaps="always"
+        contentInsetAdjustmentBehavior="always"
+      >
       <View style={styles.header}>
         <Ionicons name="warning" size={60} color="#ef4444" />
         <Text style={[styles.title, { color: theme.text }]}>Delete Account</Text>
@@ -277,7 +292,8 @@ export default function DeleteAccount() {
           </>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
