@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -25,13 +25,13 @@ export default function Contact() {
       icon: 'location',
       title: t('officeAddress'),
       subtitle: 'Kathmandu, Nepal',
-      action: () => {},
+      action: () => { },
     },
     {
       icon: 'globe',
       title: t('visitWebsite'),
       subtitle: 'www.elearn.com',
-      action: () => Linking.openURL('https://www.elearn.com'),
+      action: () => Linking.openURL('https://www.elearnnep.com'),
     },
   ];
 

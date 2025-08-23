@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useMemo, useState } from 'react';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import {
   ActivityIndicator,
   Alert,
@@ -222,24 +223,32 @@ export default function Textbook() {
   const handleDownload = async (url, index) => {
     try {
       setDownloadingIndex(index);
-      const filename = url.split('/').pop();
-      const fileUri = FileSystem.documentDirectory + filename;
-
-      const fileInfo = await FileSystem.getInfoAsync(fileUri);
-      if (!fileInfo.exists) {
-        const downloadResumable = FileSystem.createDownloadResumable(url, fileUri);
-        await downloadResumable.downloadAsync();
-      }
-      setDownloadingIndex(null);
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
+      
+      if (Platform.OS === 'web') {
+        // For web, open the PDF in a new tab
+        window.open(url, '_blank');
       } else {
-        Alert.alert('Download Complete', `File saved to:\n${fileUri}`);
+        // For mobile, use the file system
+        const filename = url.split('/').pop();
+        const fileUri = FileSystem.documentDirectory + filename;
+
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        if (!fileInfo.exists) {
+          const downloadResumable = FileSystem.createDownloadResumable(url, fileUri);
+          await downloadResumable.downloadAsync();
+        }
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri);
+        } else {
+          Alert.alert('Download Complete', `File saved to:\n${fileUri}`);
+        }
       }
     } catch (error) {
+      console.error('Download error:', error);
+      Alert.alert('Error', 'Unable to open the file. Please try again.');
+    } finally {
       setDownloadingIndex(null);
-      Alert.alert('Download Failed', 'Unable to download the file.');
     }
   };
 

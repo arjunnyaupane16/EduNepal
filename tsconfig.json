@@ -4,11 +4,16 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "expo-module-scripts/*": ["./node_modules/expo-module-scripts/*"]
     },
-    "typeRoots": ["./node_modules/@types", "./types"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types"
+    ],
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "composite": true
   },
   "include": [
     "**/*.ts",
@@ -19,6 +24,7 @@
   ],
   "exclude": [
     "node_modules",
-    "**/node_modules/**"
+    "**/node_modules/**",
+    "node_modules/expo-file-system/tsconfig.json"
   ]
 }

@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system';
+import { router } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import Constants from 'expo-constants';
 import { useTheme } from '../../../context/ThemeContext';
-import { router } from 'expo-router';
+import { Platform } from 'react-native';
 
 // PDFs are now hosted in a separate Supabase project/bucket
 const PDF_SUPABASE_URL = Constants?.expoConfig?.extra?.pdfSupabaseUrl || 'https://apqysgfnanmvkracjgtr.supabase.co';
@@ -100,24 +101,36 @@ export default function EnglishGuidebook() {
   const [downloading, setDownloading] = useState(null);
 
   useEffect(() => {
-    checkAllDownloads();
+    if (Platform.OS !== 'web') {
+      checkAllDownloads();
+    }
   }, []);
 
   const checkAllDownloads = async () => {
-    const results = [];
-    for (let unit of englishUnits) {
-      const fileName = unit.title.replace(/\s+/g, '_') + '.pdf';
-      const fileUri = FileSystem.documentDirectory + fileName;
-      const fileInfo = await FileSystem.getInfoAsync(fileUri);
-      if (fileInfo.exists) results.push(unit.title);
+    try {
+      const results = [];
+      for (let unit of englishUnits) {
+        const fileName = unit.title.replace(/\s+/g, '_') + '.pdf';
+        const fileUri = FileSystem.documentDirectory + fileName;
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        if (fileInfo.exists) results.push(unit.title);
+      }
+      setDownloadedFiles(results);
+    } catch (error) {
+      console.error('Error checking downloads:', error);
     }
-    setDownloadedFiles(results);
   };
 
   const handleDownloadOrDelete = async (title, url) => {
+    // For web, open the PDF in a new tab
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank');
+      return;
+    }
+
+    // For mobile, handle download/delete
     const fileName = title.replace(/\s+/g, '_') + '.pdf';
     const fileUri = FileSystem.documentDirectory + fileName;
-
     const isDownloaded = downloadedFiles.includes(title);
 
     if (isDownloaded) {
@@ -135,6 +148,7 @@ export default function EnglishGuidebook() {
                 setDownloadedFiles(prev => prev.filter(name => name !== title));
               } catch (err) {
                 console.error('Delete error:', err);
+                Alert.alert('Error', 'Failed to delete the file. Please try again.');
               }
             },
           },
@@ -147,11 +161,14 @@ export default function EnglishGuidebook() {
       setDownloading(title);
       const downloadRes = await FileSystem.downloadAsync(url, fileUri);
       if (downloadRes.status === 200) {
-        await Sharing.shareAsync(downloadRes.uri);
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloadRes.uri);
+        }
         setDownloadedFiles(prev => [...prev, title]);
       }
     } catch (err) {
       console.error('Download error:', err);
+      Alert.alert('Error', 'Failed to download the file. Please check your connection and try again.');
     } finally {
       setDownloading(null);
     }
@@ -239,7 +256,7 @@ const styles = StyleSheet.create({
   card: {
     paddingVertical: 22,
     paddingHorizontal: 20,
-    marginVertical:6 ,
+    marginVertical: 6,
     borderRadius: 8,
     elevation: 2,
     shadowOffset: { width: 0, height: 1 },
@@ -255,7 +272,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     flexShrink: 1,
-color: 'red'
+    color: 'red'
   },
   smallButtons: {
     flexDirection: 'row',
