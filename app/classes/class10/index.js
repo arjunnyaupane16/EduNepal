@@ -1,12 +1,13 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useTheme } from '../../context/ThemeContext';
-import { useLanguage } from '../../context/LanguageContext';
+import React from 'react';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import BottomNavBar from '../../../components/BottomNavBar';
 import TopNavBar from '../../../components/TopNavBar';
 import styles from '../../../styles/ClassScreenStyles';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function Class10() {
   const { theme } = useTheme();
@@ -61,7 +62,7 @@ export default function Class10() {
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
               {t('cdcApprovedBooks')}
             </Text>
-            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}> 
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
               <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
             </View>
           </TouchableOpacity>
@@ -80,7 +81,7 @@ export default function Class10() {
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
               {t('chapterWiseNotes')}
             </Text>
-            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}> 
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
               <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
             </View>
           </TouchableOpacity>
@@ -99,7 +100,7 @@ export default function Class10() {
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
               {t('lastYearsExams')}
             </Text>
-            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}> 
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
               <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
             </View>
           </TouchableOpacity>
@@ -118,7 +119,7 @@ export default function Class10() {
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
               {t('expectedQuestions')}
             </Text>
-            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}> 
+            <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
               <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
             </View>
           </TouchableOpacity>

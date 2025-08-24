@@ -124,7 +124,7 @@ async function insertAndArchiveNotification({ title, body, audience = 'all', dat
 }
 
 // Shared helper: send a broadcast to all registered recipients NOW
-async function sendBroadcastNow({ title = 'EduNepal', message, mode = 'now' }) {
+async function sendBroadcastNow({ title = 'elearnNep', message, mode = 'now' }) {
   if (!message) throw new Error('message is required');
   // Push broadcast
   if (tokens.size > 0) {
@@ -175,7 +175,7 @@ app.post('/auth/send-code', async (req, res) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const ttlMs = 10 * 60 * 1000; // 10 minutes
     verifications.set(`${e}|${p}`, { code, expiresAt: Date.now() + ttlMs });
-    await sendEmail(e, 'Your EduNepal verification code', `Your ${p.replace('_', ' ')} code is: ${code}. It will expire in 10 minutes.`);
+    await sendEmail(e, 'Your elearnNep verification code', `Your ${p.replace('_', ' ')} code is: ${code}. It will expire in 10 minutes.`);
     return res.json({ ok: true, expiresInSeconds: 600 });
   } catch (err) {
     console.error('send-code error:', err);
@@ -268,7 +268,7 @@ app.post('/auth/verify-code', (req, res) => {
 // Schedule a broadcast at a random time within the next 24 hours
 // Body: { title?: string, message: string }
 app.post('/broadcast-random', async (req, res) => {
-  const { title = 'EduNepal', message } = req.body || {};
+  const { title = 'elearnNep', message } = req.body || {};
   if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
 
   const tokenCount = tokens.size;
@@ -301,7 +301,7 @@ app.post('/broadcast-random', async (req, res) => {
 // Body: { title?: string, message: string }
 app.post('/broadcast-now', async (req, res) => {
   try {
-    const { title = 'EduNepal', message } = req.body || {};
+    const { title = 'elearnNep', message } = req.body || {};
     if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
     await sendBroadcastNow({ title, message, mode: 'now' });
     const sentAt = new Date().toISOString();
@@ -368,7 +368,7 @@ let dailyTimer = null;
 let dailyTime = null; // HH:MM string for info
 app.post('/schedule-daily', (req, res) => {
   try {
-    const { title = 'EduNepal', message, hour, minute = 0 } = req.body || {};
+    const { title = 'elearnNep', message, hour, minute = 0 } = req.body || {};
     if (!message) return res.status(400).json({ ok: false, error: 'message is required' });
     const h = Number(hour);
     const m = Number(minute);
@@ -427,7 +427,7 @@ app.post('/schedule-daily', (req, res) => {
   }
 });
 
-app.get('/', (_req, res) => res.send('EduNepal Push Server running'));
+app.get('/', (_req, res) => res.send('elearnNep Push Server running'));
 app.get('/health', (_req, res) => {
   res.json({ ok: true, uptime: process.uptime(), timestamp: new Date().toISOString() });
 });

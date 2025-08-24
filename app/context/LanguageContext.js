@@ -4,6 +4,19 @@ import { createContext, useContext, useEffect, useState } from 'react';
 // Translation data
 const translations = {
   en: {
+    // Textbook Component
+    class10Textbooks: "Class 10 Textbooks",
+    chooseMediumAndSubject: "Choose your medium and subject",
+    englishMedium: "English Medium",
+    nepaliMedium: "Nepali Medium",
+    subjects: "subjects",
+    english: "English",
+    mathematics: "Mathematics",
+    science: "Science",
+    socialStudies: "Social Studies",
+    computerScience: "Computer Science",
+    optionalMath: "Optional Mathematics",
+    
     // Authentication
     welcomeBack: "Welcome Back",
     createAccount: "Create Account",
@@ -309,6 +322,19 @@ const translations = {
   },
   
   ne: {
+    // Textbook Component
+    class10Textbooks: "कक्षा १० को पाठ्यपुस्तकहरू",
+    chooseMediumAndSubject: "आफ्नो माध्यम र विषय चयन गर्नुहोस्",
+    englishMedium: "अंग्रेजी माध्यम",
+    nepaliMedium: "नेपाली माध्यम",
+    subjects: "विषयहरू",
+    english: "अंग्रेजी",
+    mathematics: "गणित",
+    science: "विज्ञान",
+    socialStudies: "सामाजिक अध्ययन",
+    computerScience: "कम्प्युटर विज्ञान",
+    optionalMath: "वैकल्पिक गणित",
+    
     // Authentication
     welcomeBack: "फिर्ता स्वागत छ",
     createAccount: "खाता सिर्जना गर्नुहोस्",
@@ -593,6 +619,19 @@ const translations = {
   },
   
   hi: {
+    // Textbook Component
+    class10Textbooks: "कक्षा 10 की पाठ्यपुस्तकें",
+    chooseMediumAndSubject: "अपना माध्यम और विषय चुनें",
+    englishMedium: "अंग्रेजी माध्यम",
+    nepaliMedium: "नेपाली माध्यम",
+    subjects: "विषय",
+    english: "अंग्रेजी",
+    mathematics: "गणित",
+    science: "विज्ञान",
+    socialStudies: "सामाजिक अध्ययन",
+    computerScience: "कंप्यूटर विज्ञान",
+    optionalMath: "वैकल्पिक गणित",
+    
     // Authentication
     welcomeBack: "वापस स्वागत है",
     createAccount: "खाता बनाएं",

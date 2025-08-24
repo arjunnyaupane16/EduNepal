@@ -18,8 +18,8 @@ export default function SystemNotifications() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
-  const [title, setTitle] = useState('EduNepal');
-  const [message, setMessage] = useState('Study reminder: Open EduNepal today!');
+  const [title, setTitle] = useState('elearnNep');
+  const [message, setMessage] = useState('Study reminder: Open elearnNep today!');
   const [loading, setLoading] = useState(false);
   const [sendingNow, setSendingNow] = useState(false);
   const [hour, setHour] = useState(9);
@@ -161,7 +161,7 @@ export default function SystemNotifications() {
       const res = await fetch(`${base}/admin/notifications`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: title || 'EduNepal',
+          title: title || 'elearnNep',
           body: message,
           audience,
           data: { type: category || 'system', source: 'admin-ui' },
@@ -290,7 +290,7 @@ export default function SystemNotifications() {
       const res = await fetch(`${base}/broadcast-random`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, title: title || 'EduNepal' }),
+        body: JSON.stringify({ message, title: title || 'elearnNep' }),
       });
       const data = await res.json();
       if (data?.ok) {
@@ -318,7 +318,7 @@ export default function SystemNotifications() {
       setSendingNow(true);
       const base = await getServerUrl();
       const res = await fetch(`${base}/broadcast-now`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, title: title || 'EduNepal' })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, title: title || 'elearnNep' })
       });
       const data = await res.json();
       if (data?.ok) {
@@ -346,7 +346,7 @@ export default function SystemNotifications() {
       setLoading(true);
       const base = await getServerUrl();
       const res = await fetch(`${base}/schedule-daily`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, title: title || 'EduNepal', hour, minute })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, title: title || 'elearnNep', hour, minute })
       });
       const data = await res.json();
       if (data?.ok) {
@@ -370,7 +370,7 @@ export default function SystemNotifications() {
       Alert.alert('Message required', 'Please write a message to send.');
       return;
     }
-    const delay = await scheduleLocalRandomNotification(message, 'EduNepal');
+    const delay = await scheduleLocalRandomNotification(message, 'elearnNep');
     Alert.alert('Local scheduled', `A local notification will show in ~${Math.round(delay / 60)} min on this device.`);
   };
 
@@ -476,7 +476,7 @@ export default function SystemNotifications() {
               const raw = await AsyncStorage.getItem('notif_template');
               if (!raw) return Alert.alert('No template', 'Save one first.');
               const obj = JSON.parse(raw);
-              setTitle(obj.title || 'EduNepal');
+              setTitle(obj.title || 'elearnNep');
               setMessage(obj.message || '');
             } catch { }
           }}
@@ -552,7 +552,7 @@ export default function SystemNotifications() {
               return Alert.alert('Not supported on web', 'Immediate local preview is only available on iOS/Android.');
             }
             await Notifications.scheduleNotificationAsync({
-              content: { title: title || 'EduNepal', body: message, sound: 'default', data: { type: category || 'system', source: 'preview' } },
+              content: { title: title || 'elearnNep', body: message, sound: 'default', data: { type: category || 'system', source: 'preview' } },
               trigger: null, // immediate
             });
           } catch (e) {

@@ -1,35 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import BottomNavBar from '../../../components/BottomNavBar';
-import baseStyles from '../../../styles/ClassScreenStyles';
+import TopNavBar from '../../../components/TopNavBar';
+import styles from '../../../styles/ClassScreenStyles';
+import { useLanguage } from '../../context/LanguageContext';
 
-// Extend the base styles with our custom styles
-const styles = StyleSheet.create({
-  ...baseStyles,
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  downloadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  downloadText: {
-    color: '#fff',
-    marginLeft: 4,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-});
-import { router } from 'expo-router';
+// Card colors matching index.js
+const cardColors = [
+  { bg: '#e0f2fe', icon: '#0ea5e9' }, // blue
+  { bg: '#fef3c7', icon: '#f59e0b' }, // amber
+  { bg: '#e0e7ff', icon: '#6366f1' }, // indigo
+  { bg: '#dcfce7', icon: '#22c55e' }, // green
+];
 import { getSupabase } from '../../services/supabaseClient';
 const supabase = getSupabase();
 import * as FileSystem from 'expo-file-system';
@@ -570,8 +555,8 @@ const listDownloadedFiles = async () => {
 };
 
 export default function Guidebooks() {
-  const theme = useTheme();
-  const [downloadedFiles, setDownloadedFiles] = useState([]);
+  const { theme } = useTheme();
+  const { t } = useLanguage();
   const [isDownloading, setIsDownloading] = useState(false);
   const [cachedFiles, setCachedFiles] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -657,130 +642,107 @@ export default function Guidebooks() {
 
   const subjects = [
     {
-      title: 'English',
-      description: 'Complete notes and grammar solutions',
-      color: '#dbeafe',
+      title: t('english'),
+      description: t('chapterWiseNotes'),
+      color: cardColors[0].bg,
       icon: 'menu-book',
       route: 'english',
-      downloadUrl: 'https://yoursupabaseurl.com/storage/v1/object/public/ArjunNyaupane/english-guide.pdf',
+      iconColor: cardColors[0].icon,
+      downloadUrl: 'https://eovzqcjgqmlaubzwwqpx.supabase.co/storage/v1/object/public/ArjunNyaupane/english-guide.pdf',
       fileName: 'english-guide.pdf'
     },
     {
-      title: 'नेपाली',
-      description: 'पाठ अनुसार व्याख्या र अभ्यास',
-      color: '#fef9c3',
+      title: t('nepali'),
+      description: t('chapterWiseNotes'),
+      color: cardColors[1].bg,
       icon: 'language',
       route: 'nepali',
-      downloadUrl: 'https://yoursupabaseurl.com/storage/v1/object/public/ArjunNyaupane/nepali-guide.pdf',
+      iconColor: cardColors[1].icon,
+      downloadUrl: 'https://eovzqcjgqmlaubzwwqpx.supabase.co/storage/v1/object/public/ArjunNyaupane/nepali-guide.pdf',
       fileName: 'nepali-guide.pdf'
     },
     {
-      title: 'Social',
-      description: 'Key points and explanation',
-      color: '#ede9fe',
+      title: t('socialStudies'),
+      description: t('chapterWiseNotes'),
+      color: cardColors[2].bg,
       icon: 'public',
       route: 'social',
-      downloadUrl: 'https://yoursupabaseurl.com/storage/v1/object/public/ArjunNyaupane/social-guide.pdf',
+      iconColor: cardColors[2].icon,
+      downloadUrl: 'https://eovzqcjgqmlaubzwwqpx.supabase.co/storage/v1/object/public/ArjunNyaupane/social-guide.pdf',
       fileName: 'social-guide.pdf'
     },
     {
-      title: 'Math',
-      description: 'Solutions, formulas and examples',
-      color: '#dcfce7',
+      title: t('mathematics'),
+      description: t('chapterWiseNotes'),
+      color: cardColors[3].bg,
       icon: 'calculate',
       route: 'math',
-      downloadUrl: 'https://yoursupabaseurl.com/storage/v1/object/public/ArjunNyaupane/math-guide.pdf',
+      iconColor: cardColors[3].icon,
+      downloadUrl: 'https://eovzqcjgqmlaubzwwqpx.supabase.co/storage/v1/object/public/ArjunNyaupane/math-guide.pdf',
       fileName: 'math-guide.pdf'
     },
   ];
 
   const filteredSubjects = subjects.filter((s) => {
-    if (!searchQuery) return true; // Return all subjects if search is empty
+    if (!searchQuery) return true;
     return (
       s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.title === 'नेपाली' && 'नेपाली'.includes(searchQuery)) // allows searching for Nepali
+      (s.title === t('nepali') && t('nepali').toLowerCase().includes(searchQuery.toLowerCase()))
     );
   });
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Bar */}
-      <View style={[styles.topBar, { 
-        backgroundColor: theme.cardBackground, 
-        borderBottomColor: theme.border 
-      }]}>
-        <Text style={[styles.appTitle, { color: theme.text }]}>Guidebooks</Text>
-        <View style={styles.rightIcons}>
-          <MaterialIcons name="notifications-none" size={24} color={theme.text} />
-          <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-            <Text style={[styles.avatarText, { color: '#FFFFFF' }]}>AN</Text>
-          </View>
-        </View>
-      </View>
+      {/* Top Navigation Bar with Profile */}
+      <TopNavBar title={t('guidebooks')} showMenu={true} showNotifications={true} />
 
-      {/* Search Bar */}
+      {/* Search Box */}
       <View style={[styles.searchContainer, {
         backgroundColor: theme.cardBackground,
         borderColor: theme.border
       }]}>
         <MaterialIcons name="search" size={20} color={theme.placeholder} />
         <TextInput
-          placeholder="Search subjects..."
+          placeholder={t('searchBooksNotes')}
           placeholderTextColor={theme.placeholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          style={[
-            styles.searchInput, 
-            { 
-              color: theme.text,
-              backgroundColor: theme.searchBackground || theme.cardBackground
-            }
-          ]}
+          style={[styles.searchInput, { color: theme.text }]}
         />
       </View>
 
       {/* Content */}
-      <ScrollView contentContainerStyle={styles.content}>
-
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        {/* Grid Cards */}
         <View style={styles.grid}>
           {filteredSubjects.map((subject, index) => (
             <TouchableOpacity
               key={index}
-              style={[
-                styles.card, 
-                { 
-                  backgroundColor: theme.cardBackground, 
-                  borderColor: theme.border,
-                  shadowColor: theme.primary,
-                  elevation: 2
-                }
-              ]}
+              activeOpacity={0.85}
+              style={[styles.card, { 
+                backgroundColor: theme.cardBackground, 
+                borderColor: subject.iconColor, 
+                borderWidth: 2 
+              }]}
               onPress={() => router.push(`/classes/class10/guidebooks/${subject.route}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`${subject.title} - ${subject.description}`}
             >
-              <View style={[styles.iconWrapper, { 
-                backgroundColor: subject.color,
-                opacity: 0.9
-              }]}>
-                <MaterialIcons name={subject.icon} size={20} color={theme.text} />
+              <View style={[styles.iconWrapper, { backgroundColor: subject.color }]}>
+                <MaterialIcons name={subject.icon} size={20} color={subject.iconColor} />
               </View>
               <Text style={[styles.title, { color: theme.text }]}>{subject.title}</Text>
-              <Text style={[styles.subtitle, { color: theme.secondaryText }]}>{subject.description}</Text>
-              <View style={[styles.cardFooter, { justifyContent: 'flex-end' }]}>
-                <View style={{ 
-                  backgroundColor: theme.iconBackground || theme.primary + '20',
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  <MaterialIcons 
-                    name="chevron-right" 
-                    size={16} 
-                    color={theme.primary} 
-                  />
-                </View>
+              <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+                {subject.description}
+              </Text>
+              <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
+                <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
               </View>
             </TouchableOpacity>
           ))}
