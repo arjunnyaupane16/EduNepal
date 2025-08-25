@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform, KeyboardAvoidingView, ScrollView } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from "./context/AuthContext";
 import { useLanguage } from "./context/LanguageContext";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -16,7 +16,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, signInWithGoogle } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -44,6 +44,15 @@ export default function Login() {
       router.replace("/(authenticated)");
     } else {
       Alert.alert("Error", result.message);
+    }
+  };
+
+  const handleGoogle = async () => {
+    const res = await signInWithGoogle();
+    if (!res?.success && res?.message) {
+      Alert.alert('Google Sign-in', res.message);
+    } else if (res?.success && Platform.OS !== 'web' && res?.url) {
+      // Native opens the browser; on return, auth listener will navigate from elsewhere
     }
   };
 
@@ -141,9 +150,9 @@ export default function Login() {
       {/* Social Login Placeholder */}
       <View style={styles.socialContainer}>
         <Text style={styles.orText}>Or continue with</Text>
-        <TouchableOpacity style={styles.googleButton}>
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogle}>
           <Ionicons name="logo-google" size={20} color="#db4437" />
-          <Text style={styles.googleText}>Google ({t('comingSoon')})</Text>
+          <Text style={styles.googleText}>Sign in with Google</Text>
         </TouchableOpacity>
       </View>
 

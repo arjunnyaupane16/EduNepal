@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform, KeyboardAvoidingView, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
-import { useAuth } from "./context/AuthContext";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from "./context/AuthContext";
 
 export default function Forgot() {
   const [email, setEmail] = useState("");
@@ -13,7 +14,7 @@ export default function Forgot() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { requestPasswordReset, confirmPasswordReset } = useAuth();
+  const { requestPasswordReset, confirmPasswordReset, signInWithGoogle } = useAuth();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
@@ -41,6 +42,13 @@ export default function Forgot() {
     if (!resp?.success) return Alert.alert("Error", resp?.message || "Failed to reset password");
     Alert.alert("Success", "Your password has been reset. Please log in.");
     router.replace("/login");
+  };
+
+  const handleGoogle = async () => {
+    const res = await signInWithGoogle();
+    if (!res?.success && res?.message) {
+      Alert.alert('Google Sign-in', res.message);
+    }
   };
 
   return (
@@ -103,6 +111,14 @@ export default function Forgot() {
         </>
       )}
 
+      <View style={{ width: '100%', alignItems: 'center', marginTop: 16 }}>
+        <Text style={{ color: '#666', marginBottom: 12 }}>Or continue with</Text>
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogle}>
+          <Ionicons name="logo-google" size={20} color="#db4437" />
+          <Text style={styles.googleText}>Sign in with Google</Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
         <Text style={styles.linkText}>Back to Login</Text>
       </TouchableOpacity>
@@ -118,4 +134,6 @@ const styles = StyleSheet.create({
   button: { backgroundColor: "#e67e22", padding: 15, borderRadius: 10, width: "100%", alignItems: "center" },
   buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
   linkText: { color: "#3498db", fontWeight: "bold" },
+  googleButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 15, borderWidth: 1, borderColor: "#ddd", borderRadius: 10, width: "100%", backgroundColor: "#fff" },
+  googleText: { marginLeft: 10, fontSize: 16, color: "#666" },
 });

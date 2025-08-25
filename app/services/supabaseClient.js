@@ -1,7 +1,8 @@
-import 'react-native-url-polyfill/auto';
-import 'react-native-get-random-values';
-import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
+import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
 
 // Prefer Expo public env vars on web/static builds, fallback to app.json extras
 const SUPABASE_URL =
@@ -18,13 +19,15 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   // Optimized configuration for zero egress
   const options = {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
+      // Persist Supabase auth session for email/OAuth across app restarts
+      persistSession: true,
+      autoRefreshToken: true,
+      // On web, Supabase will parse the URL hash after OAuth redirect
+      detectSessionInUrl: true,
       storage: {
-        getItem: () => null,
-        setItem: () => {},
-        removeItem: () => {}
+        getItem: (key) => AsyncStorage.getItem(key),
+        setItem: (key, value) => AsyncStorage.setItem(key, value),
+        removeItem: (key) => AsyncStorage.removeItem(key)
       }
     },
     global: {

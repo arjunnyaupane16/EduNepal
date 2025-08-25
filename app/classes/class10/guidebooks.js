@@ -1,28 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useTheme } from '../../context/ThemeContext';
-import BottomNavBar from '../../../components/BottomNavBar';
-import TopNavBar from '../../../components/TopNavBar';
-import styles from '../../../styles/ClassScreenStyles';
-import { useLanguage } from '../../context/LanguageContext';
-
-// Card colors matching index.js
-const cardColors = [
-  { bg: '#e0f2fe', icon: '#0ea5e9' }, // blue
-  { bg: '#fef3c7', icon: '#f59e0b' }, // amber
-  { bg: '#e0e7ff', icon: '#6366f1' }, // indigo
-  { bg: '#dcfce7', icon: '#22c55e' }, // green
-];
-import { getSupabase } from '../../services/supabaseClient';
-const supabase = getSupabase();
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
-import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { Platform, Alert } from 'react-native';
+import { router } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import React, { useEffect, useState } from 'react';
+import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import BottomNavBar from '../../../components/BottomNavBar';
+import baseStyles from '../../../styles/ClassScreenStyles';
+import { useTheme } from '../../context/ThemeContext';
+import { getSupabase } from '../../services/supabaseClient';
+
+// Extend the base styles with our custom styles
+const styles = StyleSheet.create({
+  ...baseStyles,
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  downloadText: {
+    color: '#fff',
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+});
+const supabase = getSupabase();
 
 const DOWNLOADED_FILES_KEY = '@downloaded_files';
 const CACHE_DURATION = 90 * 24 * 60 * 60 * 1000; // 90 days in milliseconds
@@ -37,7 +50,7 @@ const ensureDirExists = async () => {
   if (Platform.OS === 'web') {
     return; // No directory operations on web
   }
-  
+
   try {
     const dirInfo = await FileSystem.getInfoAsync(DOWNLOAD_DIR);
     if (!dirInfo.exists) {
@@ -48,12 +61,12 @@ const ensureDirExists = async () => {
       let totalSize = 0;
       const fileStats = [];
       const now = Date.now();
-      
+
       for (const file of files) {
         try {
           const filePath = `${DOWNLOAD_DIR}${file}`;
           const fileInfo = await FileSystem.getInfoAsync(filePath);
-          
+
           if (fileInfo.exists && fileInfo.size) {
             // Check if file is too old
             const fileAge = now - (fileInfo.modificationTime || 0);
@@ -64,7 +77,7 @@ const ensureDirExists = async () => {
               MEMORY_CACHE.delete(cacheKey);
               continue;
             }
-            
+
             totalSize += fileInfo.size;
             fileStats.push({
               uri: fileInfo.uri,
@@ -76,12 +89,12 @@ const ensureDirExists = async () => {
           console.warn(`Error processing file ${file}:`, error);
         }
       }
-      
+
       // If cache still exceeds max size, delete oldest files first
       if (totalSize > MAX_CACHE_SIZE) {
         // Sort by modification time (oldest first)
         fileStats.sort((a, b) => a.modificationTime - b.modificationTime);
-        
+
         for (const file of fileStats) {
           if (totalSize <= MAX_CACHE_SIZE * 0.9) break; // Stop when we've cleared enough
           try {
@@ -132,21 +145,21 @@ const fileStatusCache = new Map();
 const checkExistingFile = async (fileName) => {
   try {
     if (!fileName) return null;
-    
+
     const filePath = `${DOWNLOAD_DIR}${fileName}`;
     const fileInfo = await FileSystem.getInfoAsync(filePath);
-    
+
     if (!fileInfo.exists) {
       return null;
     }
-    
+
     // Verify file integrity
     const isValid = await checkFileIntegrity(filePath);
     if (!isValid) {
       await FileSystem.deleteAsync(filePath, { idempotent: true });
       return null;
     }
-    
+
     return {
       uri: filePath,
       fileName,
@@ -166,7 +179,7 @@ const getCachedFiles = async () => {
     const allKeys = await AsyncStorage.getAllKeys();
     const fileKeys = allKeys.filter(key => key.startsWith('@file_cache_'));
     const cacheItems = await AsyncStorage.multiGet(fileKeys);
-    
+
     const files = [];
     for (const [key, value] of cacheItems) {
       if (value) {
@@ -192,7 +205,7 @@ const getCachedFiles = async () => {
 // Function to get a signed URL for a file with improved caching and retry logic
 const getSignedUrl = async (filePath, bucket = 'ArjunNyaupane', retries = 2) => {
   const cacheKey = `signed_url_${filePath}`;
-  
+
   try {
     // Check memory cache first
     if (fileStatusCache.has(cacheKey)) {
@@ -203,7 +216,7 @@ const getSignedUrl = async (filePath, bucket = 'ArjunNyaupane', retries = 2) => 
       // Remove expired entry
       fileStatusCache.delete(cacheKey);
     }
-    
+
     // Check persistent cache
     const cached = await AsyncStorage.getItem(cacheKey);
     if (cached) {
@@ -214,7 +227,7 @@ const getSignedUrl = async (filePath, bucket = 'ArjunNyaupane', retries = 2) => 
         return url;
       }
     }
-    
+
     // Get a new signed URL with retry logic
     let lastError;
     for (let i = 0; i <= retries; i++) {
@@ -222,17 +235,17 @@ const getSignedUrl = async (filePath, bucket = 'ArjunNyaupane', retries = 2) => 
         const { data, error } = await supabase.storage
           .from(bucket)
           .createSignedUrl(filePath, 3600); // 1 hour expiry
-        
+
         if (error) throw error;
         if (!data?.signedUrl) throw new Error('No URL returned');
-        
+
         // Cache in memory and persistent storage
         const expiry = Date.now() + (55 * 60 * 1000); // 55 minutes
         const cacheData = { url: data.signedUrl, expiry };
-        
+
         fileStatusCache.set(cacheKey, cacheData);
         await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheData));
-        
+
         return data.signedUrl;
       } catch (error) {
         lastError = error;
@@ -242,7 +255,7 @@ const getSignedUrl = async (filePath, bucket = 'ArjunNyaupane', retries = 2) => 
         }
       }
     }
-    
+
     throw lastError || new Error('Failed to get signed URL');
   } catch (error) {
     console.warn('Error getting signed URL for', filePath, error);
@@ -256,14 +269,14 @@ const checkFileIntegrity = async (fileUri, expectedSize) => {
   try {
     const fileInfo = await FileSystem.getInfoAsync(fileUri);
     if (!fileInfo.exists) return false;
-    
+
     // If we have an expected size, verify it
     if (expectedSize && fileInfo.size !== expectedSize) {
       console.log(`File size mismatch: expected ${expectedSize}, got ${fileInfo.size}`);
       await FileSystem.deleteAsync(fileUri, { idempotent: true });
       return false;
     }
-    
+
     return true;
   } catch (error) {
     console.warn('Error checking file integrity:', error);
@@ -275,44 +288,44 @@ const checkFileIntegrity = async (fileUri, expectedSize) => {
 const downloadFile = async (filePath, fileName, maxRetries = 3) => {
   let retryCount = 0;
   let lastError = null;
-  
+
   const downloadWithRetry = async () => {
     let downloadResumable = null;
     const localUri = `${DOWNLOAD_DIR}${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
     const tempUri = `${localUri}.download`;
-    
+
     try {
       await ensureDirExists();
-      
+
       // Check if file already exists and is valid
       const existingFile = await checkExistingFile(fileName);
       if (existingFile) {
         const isValid = await checkFileIntegrity(existingFile.uri, existingFile.size);
         if (isValid) {
           console.log('Using existing valid file:', existingFile.uri);
-          return { 
-            success: true, 
+          return {
+            success: true,
             ...existingFile,
             cached: true,
             message: 'Using cached version'
           };
         }
       }
-      
+
       // Get file extension and MIME type
       const extension = getFileExtension(fileName);
       const mimeType = getMimeType(extension);
-      
+
       // Get signed URL with retry logic
       const signedUrl = await getSignedUrl(filePath);
       if (!signedUrl) throw new Error('Could not get download URL');
-      
+
       // Create a resumable download
       downloadResumable = FileSystem.createDownloadResumable(
         signedUrl,
         tempUri,
         {
-          headers: { 
+          headers: {
             'Cache-Control': 'max-age=31536000, immutable',
             'Accept-Ranges': 'bytes'
           },
@@ -322,35 +335,35 @@ const downloadFile = async (filePath, fileName, maxRetries = 3) => {
         (downloadProgress) => {
           const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
           const cacheKey = `@download_progress_${fileName}`;
-          fileStatusCache.set(cacheKey, { 
-            progress, 
+          fileStatusCache.set(cacheKey, {
+            progress,
             bytesWritten: downloadProgress.totalBytesWritten,
             totalBytes: downloadProgress.totalBytesExpectedToWrite,
-            lastUpdated: Date.now() 
+            lastUpdated: Date.now()
           });
         }
       );
-      
+
       // Start the download
       const { uri, status } = await downloadResumable.downloadAsync();
-      
+
       if (status !== 200) {
         throw new Error(`Download failed with status ${status}`);
       }
-      
+
       // Verify the downloaded file
       const fileInfo = await FileSystem.getInfoAsync(uri, { size: true });
       if (!fileInfo.exists || fileInfo.size === 0) {
         throw new Error('Downloaded file is empty or corrupted');
       }
-      
+
       // Rename temp file to final name
       const finalUri = `${DOWNLOAD_DIR}${fileName}`;
       await FileSystem.moveAsync({ from: tempUri, to: finalUri });
-      
+
       // Save download record
       await saveDownloadedFile(fileName, finalUri);
-      
+
       return {
         success: true,
         uri: finalUri,
@@ -359,7 +372,7 @@ const downloadFile = async (filePath, fileName, maxRetries = 3) => {
         mimeType,
         message: 'File downloaded successfully'
       };
-      
+
     } catch (error) {
       // Clean up any partial downloads
       try {
@@ -370,10 +383,10 @@ const downloadFile = async (filePath, fileName, maxRetries = 3) => {
       } catch (cleanupError) {
         console.warn('Error during cleanup:', cleanupError);
       }
-      
+
       lastError = error;
       console.error(`Download attempt ${retryCount + 1} failed:`, error);
-      
+
       if (retryCount < maxRetries) {
         retryCount++;
         const delay = Math.min(1000 * Math.pow(2, retryCount), 30000); // Exponential backoff
@@ -381,11 +394,11 @@ const downloadFile = async (filePath, fileName, maxRetries = 3) => {
         await new Promise(resolve => setTimeout(resolve, delay));
         return downloadWithRetry();
       }
-      
+
       throw error;
     }
   };
-  
+
   try {
     return await downloadWithRetry();
   } catch (error) {
@@ -393,16 +406,16 @@ const downloadFile = async (filePath, fileName, maxRetries = 3) => {
     const existingFile = await checkExistingFile(fileName);
     if (existingFile) {
       console.log('Falling back to cached version after download failure');
-      return { 
-        success: true, 
+      return {
+        success: true,
         ...existingFile,
         fromCache: true,
         message: 'Using cached version after download failure'
       };
     }
-    
-    return { 
-      success: false, 
+
+    return {
+      success: false,
       error: lastError?.message || 'Download failed',
       code: lastError?.code || 'UNKNOWN_ERROR',
       retryCount
@@ -416,10 +429,10 @@ const saveDownloadedFile = async (fileName, fileUri) => {
     if (!fileName || !fileUri) {
       throw new Error('Invalid file name or URI');
     }
-    
+
     const files = await getDownloadedFiles();
     const existingIndex = files.findIndex(f => f.fileName === fileName);
-    
+
     const fileInfo = {
       fileName,
       uri: fileUri,
@@ -427,7 +440,7 @@ const saveDownloadedFile = async (fileName, fileUri) => {
       size: 0,
       lastModified: Date.now()
     };
-    
+
     try {
       // Get file info for size
       const fileInfo = await FileSystem.getInfoAsync(fileUri);
@@ -438,24 +451,24 @@ const saveDownloadedFile = async (fileName, fileUri) => {
     } catch (e) {
       console.warn('Could not get file info:', e);
     }
-    
+
     if (existingIndex >= 0) {
       files[existingIndex] = fileInfo;
     } else {
       files.push(fileInfo);
     }
-    
+
     // Limit the number of files to keep in history
     const MAX_FILES = 100;
     const sortedFiles = files
       .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
       .slice(0, MAX_FILES);
-    
+
     await AsyncStorage.setItem(DOWNLOADED_FILES_KEY, JSON.stringify(sortedFiles));
-    
+
     // Clear the list cache
     MEMORY_CACHE.delete('downloaded_files_list');
-    
+
     return true;
   } catch (error) {
     console.error('Error saving downloaded file info:', error);
@@ -471,13 +484,13 @@ const getDownloadedFiles = async () => {
     if (MEMORY_CACHE.has(cacheKey)) {
       return MEMORY_CACHE.get(cacheKey);
     }
-    
+
     const jsonValue = await AsyncStorage.getItem(DOWNLOADED_FILES_KEY);
     const result = jsonValue != null ? JSON.parse(jsonValue) : [];
-    
+
     // Update memory cache
     MEMORY_CACHE.set(cacheKey, result);
-    
+
     return result;
   } catch (e) {
     console.error('Error reading downloaded files:', e);
@@ -490,16 +503,16 @@ const deleteFile = async (fileUri) => {
   try {
     // Delete the local file
     await FileSystem.deleteAsync(fileUri, { idempotent: true });
-    
+
     // Remove from downloaded files list
     const downloadedFiles = await getDownloadedFiles();
     const fileToDelete = downloadedFiles.find(f => f.uri === fileUri);
-    
+
     if (fileToDelete) {
       const updatedFiles = downloadedFiles.filter(f => f.uri !== fileUri);
       await AsyncStorage.setItem(DOWNLOADED_FILES_KEY, JSON.stringify(updatedFiles));
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('Error deleting file:', error);
@@ -538,7 +551,7 @@ const listDownloadedFiles = async () => {
   if (Platform.OS === 'web') {
     return []; // Return empty array for web as we don't have file system access
   }
-  
+
   try {
     await ensureDirExists();
     const files = await FileSystem.readDirectoryAsync(DOWNLOAD_DIR);
@@ -555,8 +568,8 @@ const listDownloadedFiles = async () => {
 };
 
 export default function Guidebooks() {
-  const { theme } = useTheme();
-  const { t } = useLanguage();
+  const theme = useTheme();
+  const [downloadedFiles, setDownloadedFiles] = useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [cachedFiles, setCachedFiles] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -568,16 +581,16 @@ export default function Guidebooks() {
         getDownloadedFiles(),
         getCachedFiles()
       ]);
-      
+
       const cachedMap = {};
       cached.forEach(file => {
         cachedMap[file.fileName] = true;
       });
-      
+
       setDownloadedFiles(files);
       setCachedFiles(cachedMap);
     };
-    
+
     loadInitialData();
   }, []);
 
@@ -587,11 +600,11 @@ export default function Guidebooks() {
       window.open(fileUrl, '_blank');
       return { success: true, fromCache: false };
     }
-    
+
     // For mobile, check local storage
     const localPath = `${FileSystem.documentDirectory}${fileName}`;
     const fileInfo = await FileSystem.getInfoAsync(localPath);
-    
+
     // If file exists and is valid, return immediately
     if (fileInfo.exists && fileInfo.size > 0) {
       console.log('File already exists locally');
@@ -606,32 +619,32 @@ export default function Guidebooks() {
 
     try {
       setIsDownloading(true);
-      
+
       // On web, we've already handled the download by opening in a new tab
       if (Platform.OS === 'web') {
         return { success: true, fromCache: false };
       }
-      
+
       // For mobile, proceed with file download
       const cacheBuster = `?v=${Math.floor(Date.now() / (1000 * 60 * 60 * 24))}`; // Cache for 1 day
       const result = await downloadFile(fileUrl + cacheBuster, fileName);
-      
+
       if (result.success) {
         // Update cache
         const newCachedFiles = { ...cachedFiles, [fileName]: true };
         setCachedFiles(newCachedFiles);
-        
+
         if (!result.fromCache) {
           console.log('File downloaded successfully');
         }
         return result;
       }
       throw new Error(result.error || 'Download failed');
-      
+
     } catch (error) {
       console.error('Download error:', error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Download failed. Please check your connection and try again.',
         fromCache: false
       };
@@ -642,107 +655,130 @@ export default function Guidebooks() {
 
   const subjects = [
     {
-      title: t('english'),
-      description: t('chapterWiseNotes'),
-      color: cardColors[0].bg,
+      title: 'English',
+      description: 'Complete notes and grammar solutions',
+      color: '#dbeafe',
       icon: 'menu-book',
       route: 'english',
-      iconColor: cardColors[0].icon,
-      downloadUrl: 'https://eovzqcjgqmlaubzwwqpx.supabase.co/storage/v1/object/public/ArjunNyaupane/english-guide.pdf',
+      downloadUrl: 'https://yoursupabaseurl.com/storage/v1/object/public/ArjunNyaupane/english-guide.pdf',
       fileName: 'english-guide.pdf'
     },
     {
-      title: t('nepali'),
-      description: t('chapterWiseNotes'),
-      color: cardColors[1].bg,
+      title: 'नेपाली',
+      description: 'पाठ अनुसार व्याख्या र अभ्यास',
+      color: '#fef9c3',
       icon: 'language',
       route: 'nepali',
-      iconColor: cardColors[1].icon,
-      downloadUrl: 'https://eovzqcjgqmlaubzwwqpx.supabase.co/storage/v1/object/public/ArjunNyaupane/nepali-guide.pdf',
+      downloadUrl: 'https://yoursupabaseurl.com/storage/v1/object/public/ArjunNyaupane/nepali-guide.pdf',
       fileName: 'nepali-guide.pdf'
     },
     {
-      title: t('socialStudies'),
-      description: t('chapterWiseNotes'),
-      color: cardColors[2].bg,
+      title: 'Social',
+      description: 'Key points and explanation',
+      color: '#ede9fe',
       icon: 'public',
       route: 'social',
-      iconColor: cardColors[2].icon,
-      downloadUrl: 'https://eovzqcjgqmlaubzwwqpx.supabase.co/storage/v1/object/public/ArjunNyaupane/social-guide.pdf',
+      downloadUrl: 'https://yoursupabaseurl.com/storage/v1/object/public/ArjunNyaupane/social-guide.pdf',
       fileName: 'social-guide.pdf'
     },
     {
-      title: t('mathematics'),
-      description: t('chapterWiseNotes'),
-      color: cardColors[3].bg,
+      title: 'Math',
+      description: 'Solutions, formulas and examples',
+      color: '#dcfce7',
       icon: 'calculate',
       route: 'math',
-      iconColor: cardColors[3].icon,
-      downloadUrl: 'https://eovzqcjgqmlaubzwwqpx.supabase.co/storage/v1/object/public/ArjunNyaupane/math-guide.pdf',
+      downloadUrl: 'https://yoursupabaseurl.com/storage/v1/object/public/ArjunNyaupane/math-guide.pdf',
       fileName: 'math-guide.pdf'
     },
   ];
 
   const filteredSubjects = subjects.filter((s) => {
-    if (!searchQuery) return true;
+    if (!searchQuery) return true; // Return all subjects if search is empty
     return (
       s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.title === t('nepali') && t('nepali').toLowerCase().includes(searchQuery.toLowerCase()))
+      (s.title === 'नेपाली' && 'नेपाली'.includes(searchQuery)) // allows searching for Nepali
     );
   });
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Navigation Bar with Profile */}
-      <TopNavBar title={t('guidebooks')} showMenu={true} showNotifications={true} />
+      {/* Top Bar */}
+      <View style={[styles.topBar, {
+        backgroundColor: theme.cardBackground,
+        borderBottomColor: theme.border
+      }]}>
+        <Text style={[styles.appTitle, { color: theme.text }]}>Guidebooks</Text>
+        <View style={styles.rightIcons}>
+          <MaterialIcons name="notifications-none" size={24} color={theme.text} />
+          <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
+            <Text style={[styles.avatarText, { color: '#FFFFFF' }]}>AN</Text>
+          </View>
+        </View>
+      </View>
 
-      {/* Search Box */}
+      {/* Search Bar */}
       <View style={[styles.searchContainer, {
         backgroundColor: theme.cardBackground,
         borderColor: theme.border
       }]}>
         <MaterialIcons name="search" size={20} color={theme.placeholder} />
         <TextInput
-          placeholder={t('searchBooksNotes')}
+          placeholder="Search subjects..."
           placeholderTextColor={theme.placeholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          style={[styles.searchInput, { color: theme.text }]}
+          style={[
+            styles.searchInput,
+            {
+              color: theme.text,
+              backgroundColor: theme.searchBackground || theme.cardBackground
+            }
+          ]}
         />
       </View>
 
       {/* Content */}
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      >
-        {/* Grid Cards */}
+      <ScrollView contentContainerStyle={styles.content}>
+
         <View style={styles.grid}>
           {filteredSubjects.map((subject, index) => (
             <TouchableOpacity
               key={index}
-              activeOpacity={0.85}
-              style={[styles.card, { 
-                backgroundColor: theme.cardBackground, 
-                borderColor: subject.iconColor, 
-                borderWidth: 2 
-              }]}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderColor: theme.border,
+                  shadowColor: theme.primary,
+                  elevation: 2
+                }
+              ]}
               onPress={() => router.push(`/classes/class10/guidebooks/${subject.route}`)}
-              accessibilityRole="button"
-              accessibilityLabel={`${subject.title} - ${subject.description}`}
             >
-              <View style={[styles.iconWrapper, { backgroundColor: subject.color }]}>
-                <MaterialIcons name={subject.icon} size={20} color={subject.iconColor} />
+              <View style={[styles.iconWrapper, {
+                backgroundColor: subject.color,
+                opacity: 0.9
+              }]}>
+                <MaterialIcons name={subject.icon} size={20} color={theme.text} />
               </View>
               <Text style={[styles.title, { color: theme.text }]}>{subject.title}</Text>
-              <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-                {subject.description}
-              </Text>
-              <View style={[styles.arrow, { backgroundColor: theme.iconBackground }]}>
-                <MaterialIcons name="chevron-right" size={16} color={theme.iconColor} />
+              <Text style={[styles.subtitle, { color: theme.secondaryText }]}>{subject.description}</Text>
+              <View style={[styles.cardFooter, { justifyContent: 'flex-end' }]}>
+                <View style={{
+                  backgroundColor: theme.iconBackground || theme.primary + '20',
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={16}
+                    color={theme.primary}
+                  />
+                </View>
               </View>
             </TouchableOpacity>
           ))}

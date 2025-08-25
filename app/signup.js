@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform, KeyboardAvoidingView } from "react-native";
-import { useAuth } from "./context/AuthContext";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
+import { useAuth } from "./context/AuthContext";
 
 export default function Signup() {
   const [fullName, setFullName] = useState("");
@@ -18,7 +18,7 @@ export default function Signup() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { signup } = useAuth();
+  const { signup, signInWithGoogle } = useAuth();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + headerHeight : 0;
@@ -84,6 +84,13 @@ export default function Signup() {
       Alert.alert("Error", "Network or server error during signup. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    const res = await signInWithGoogle();
+    if (!res?.success && res?.message) {
+      Alert.alert('Google Sign-in', res.message);
     }
   };
 
@@ -206,9 +213,9 @@ export default function Signup() {
       {/* Social Signup */}
       <View style={styles.socialContainer}>
         <Text style={styles.orText}>Or sign up with</Text>
-        <TouchableOpacity style={styles.googleButton}>
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogle}>
           <Ionicons name="logo-google" size={20} color="#db4437" />
-          <Text style={styles.googleText}>Google (Coming Soon)</Text>
+          <Text style={styles.googleText}>Sign up with Google</Text>
         </TouchableOpacity>
       </View>
 

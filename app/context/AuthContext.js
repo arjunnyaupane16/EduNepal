@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState } from 'react-native';
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
+import * as Linking from 'expo-linking';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 import { getSupabase } from '../services/supabaseClient';
 
 const AuthContext = createContext();
@@ -37,7 +38,7 @@ export const AuthProvider = ({ children }) => {
         SERVER_URL = `http://${ip}:${port}`;
       }
     }
-  } catch {}
+  } catch { }
   const supabase = getSupabase();
   const ENABLE_ADMIN_BOOTSTRAP = Constants?.expoConfig?.extra?.enableAdminBootstrap === true;
   // Prefer bucket from app config, fallback to a sensible default
@@ -260,7 +261,7 @@ export const AuthProvider = ({ children }) => {
       // If the reset email matches current session user, sync local state
       if (user?.email && user.email.toLowerCase() === target.toLowerCase()) {
         setUser(prev => ({ ...(prev || {}), ...updated }));
-        try { await saveUserProfileJsonToStorage(updated); } catch {}
+        try { await saveUserProfileJsonToStorage(updated); } catch { }
       }
       return { success: true };
     } catch (e) {
@@ -617,11 +618,11 @@ export const AuthProvider = ({ children }) => {
       try {
         // Try snake_case first
         await supabase.from('users').update({ last_seen: nowIso }).eq('id', user.id);
-      } catch {}
+      } catch { }
       try {
         // Fallback camelCase
         await supabase.from('users').update({ lastSeen: nowIso }).eq('id', user.id);
-      } catch {}
+      } catch { }
     };
     // initial touch
     touch();
@@ -634,9 +635,67 @@ export const AuthProvider = ({ children }) => {
     return () => {
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
-      try { sub?.remove && sub.remove(); } catch {}
+      try { sub?.remove && sub.remove(); } catch { }
     };
   }, [isLoggedIn, user?.id, supabase]);
+
+  // Subscribe to Supabase Auth session changes (for Google/Email auth)
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
+        if (session?.user) {
+          const authUser = session.user;
+          // Ensure a corresponding row exists in public.users and hydrate local session
+          const ensured = await ensureUserRowFromAuth(authUser);
+          if (ensured?.mapped) {
+            setUser(ensured.mapped);
+            setIsLoggedIn(true);
+            try { await saveUserProfileJsonToStorage(ensured.mapped); } catch {}
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setIsLoggedIn(false);
+          setUser(null);
+        }
+      } catch {}
+    });
+    return () => { try { sub?.subscription?.unsubscribe?.(); } catch { } };
+  }, [supabase]);
+
+  const ensureUserRowFromAuth = async (authUser) => {
+    try {
+      if (!supabase || !authUser) return { success: false };
+      const email = authUser.email || '';
+      const fullName = authUser.user_metadata?.full_name || authUser.user_metadata?.name || '';
+      const username = (email && email.includes('@')) ? email.split('@')[0] : (fullName || 'user');
+      // Try fetch by auth user's email first
+      let { data: existing } = await supabase.from('users').select('*').eq('email', email).limit(1).maybeSingle();
+      if (!existing) {
+        // Upsert by email
+        const toInsert = toDbUser({
+          fullName: fullName || username,
+          email,
+          username,
+          role: 'Student',
+          joinDate: new Date().toISOString().split('T')[0],
+        });
+        const { data: inserted } = await supabase
+          .from('users')
+          .upsert(toInsert, { onConflict: 'email' })
+          .select('*')
+          .single();
+        existing = inserted || null;
+      }
+      const mapped = fromDbUser(existing || {});
+      // Register email for notifications
+      if (mapped?.email) {
+        fetch(`${SERVER_URL}/register-email`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: mapped.email }) }).catch(() => { });
+      }
+      return { success: true, mapped };
+    } catch (e) {
+      return { success: false };
+    }
+  };
 
   const login = async (credentials) => {
     const { username, email, identifier, password, mode } = credentials || {};
@@ -899,8 +958,32 @@ export const AuthProvider = ({ children }) => {
           STORAGE_KEYS.userSnapshot,
           STORAGE_KEYS.isAdmin,
         ]);
+        try { await supabase?.auth?.signOut(); } catch {}
       } catch { }
     })();
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      if (!supabase) return { success: false, message: 'Supabase unavailable' };
+      const scheme = Constants?.expoConfig?.scheme || 'elearnnep';
+      const redirectTo = Platform.select({
+        web: `${window?.location?.origin || ''}`,
+        default: Linking.createURL('auth-callback', { scheme }),
+      });
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: { access_type: 'offline', prompt: 'consent' },
+        }
+      });
+      if (error) return { success: false, message: error.message };
+      // On web, the page will redirect; on native, the listener will handle session
+      return { success: true, url: data?.url };
+    } catch (e) {
+      return { success: false, message: 'Unexpected error starting Google sign-in' };
+    }
   };
 
   const updateUser = async (updates) => {
@@ -1234,7 +1317,7 @@ export const AuthProvider = ({ children }) => {
       // Fetch file data (Expo ImagePicker returns file:// or content:// URIs)
       let res = await fetch(localUri);
       if (!res.ok) {
-        try { console.warn('[uploadProfileImage] initial fetch failed', { status: res.status, uri: String(localUri) }); } catch {}
+        try { console.warn('[uploadProfileImage] initial fetch failed', { status: res.status, uri: String(localUri) }); } catch { }
         // On some Android devices, content:// URIs are not fetchable. Copy to cache and retry.
         if (String(localUri).startsWith('content://') || String(localUri).startsWith('file://')) {
           try {
@@ -1243,7 +1326,7 @@ export const AuthProvider = ({ children }) => {
             await FileSystem.copyAsync({ from: localUri, to: cachePath });
             res = await fetch(cachePath);
           } catch (copyErr) {
-            try { console.warn('[uploadProfileImage] copy to cache failed', copyErr?.message || copyErr); } catch {}
+            try { console.warn('[uploadProfileImage] copy to cache failed', copyErr?.message || copyErr); } catch { }
           }
         }
       }
@@ -1444,6 +1527,7 @@ export const AuthProvider = ({ children }) => {
     login,
     signup,
     logout,
+    signInWithGoogle,
     updateUser,
     updateUserById,
     uploadProfileImage,

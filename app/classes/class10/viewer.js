@@ -15,7 +15,7 @@ const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView 
 import { useTheme } from '../../context/ThemeContext';
 
 export default function TextbookViewer() {
-  const { url, units: unitParam, title } = useLocalSearchParams();
+  const { url, units: unitParam } = useLocalSearchParams();
   const router = useRouter();
   const { theme } = useTheme();
 
@@ -37,6 +37,7 @@ export default function TextbookViewer() {
 
   const encodedPdfUrl = encodeURIComponent(url);
   const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodedPdfUrl}#page=${selectedPage}`;
+
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -68,7 +69,6 @@ export default function TextbookViewer() {
         <View style={styles.body}>
           {units.length > 0 && (
             <View style={[styles.sidebar, { backgroundColor: theme.card, shadowColor: theme.shadow }]}>
-              <Text style={[styles.sidebarTitle, { color: theme.text }]}>{title}</Text>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {units.map((unit) => {
                   const isSelected = selectedPage === unit.page;
@@ -99,42 +99,23 @@ export default function TextbookViewer() {
               <iframe
                 title="pdf-viewer"
                 src={viewerUrl}
-                style={styles.webView}
-                allowFullScreen
+                style={{ width: '100%', height: '100%', border: '0', background: theme.background }}
               />
             ) : (
               <WebView
                 source={{ uri: viewerUrl }}
-                style={styles.webView}
-                startInLoadingState={true}
+                style={{ flex: 1, backgroundColor: theme.background }}
+                startInLoadingState
                 renderLoading={() => (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.primary} />
+                    <Text style={{ color: theme.text, marginTop: 8 }}>Loading PDF...</Text>
                   </View>
                 )}
-                allowsFullscreenVideo={true}
-                allowsInlineMediaPlayback={true}
-                mediaPlaybackRequiresUserAction={false}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
+                javaScriptEnabled
+                domStorageEnabled
                 originWhitelist={['*']}
-                allowFileAccess={true}
-                allowUniversalAccessFromFileURLs={true}
-                allowFileAccessFromFileURLs={true}
-                mixedContentMode="always"
-                useWebKit={true}
-                scrollEnabled={true}
-                bounces={true}
-                scalesPageToFit={true}
-                automaticallyAdjustContentInsets={true}
-                contentInsetAdjustmentBehavior="automatic"
-                showsHorizontalScrollIndicator={false}
-                showsVerticalScrollIndicator={false}
-                overScrollMode="always"
-                decelerationRate="normal"
-                minimumZoomScale={1.0}
-                maximumZoomScale={2.0}
-                contentInset={{ top: 0, left: 0, bottom: 0, right: 0 }}
+                cacheEnabled
               />
             )}
           </View>
@@ -142,50 +123,29 @@ export default function TextbookViewer() {
       )}
 
       {isFullScreen && (
-        <View style={styles.fullscreenContainer}>
-          {Platform.OS === 'web' ? (
-            <iframe
-              title="pdf-viewer-fullscreen"
-              src={`${viewerUrl}&view=FitH`}
-              style={styles.fullscreenWebView}
-              allowFullScreen
-            />
-          ) : (
-            <WebView
-              source={{ uri: `${viewerUrl}&view=FitH` }}
-              style={styles.fullscreenWebView}
-              startInLoadingState={true}
-              renderLoading={() => (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={theme.primary} />
-                </View>
-              )}
-              allowsFullscreenVideo={true}
-              allowsInlineMediaPlayback={true}
-              mediaPlaybackRequiresUserAction={false}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              originWhitelist={['*']}
-              allowFileAccess={true}
-              allowUniversalAccessFromFileURLs={true}
-              allowFileAccessFromFileURLs={true}
-              mixedContentMode="always"
-              useWebKit={true}
-              scrollEnabled={true}
-              bounces={true}
-              scalesPageToFit={true}
-              automaticallyAdjustContentInsets={true}
-              contentInsetAdjustmentBehavior="automatic"
-              showsHorizontalScrollIndicator={false}
-              showsVerticalScrollIndicator={false}
-              overScrollMode="always"
-              decelerationRate="normal"
-              minimumZoomScale={1.0}
-              maximumZoomScale={2.0}
-              contentInset={{ top: 0, left: 0, bottom: 0, right: 0 }}
-            />
-          )}
-        </View>
+        Platform.OS === 'web' ? (
+          <iframe
+            title="pdf-viewer-fullscreen"
+            src={viewerUrl}
+            style={{ width: '100%', height: '100%', border: '0', background: theme.background }}
+          />
+        ) : (
+          <WebView
+            source={{ uri: viewerUrl }}
+            style={{ flex: 1, backgroundColor: theme.background }}
+            startInLoadingState
+            renderLoading={() => (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.primary} />
+                <Text style={{ color: theme.text, marginTop: 8 }}>Loading PDF...</Text>
+              </View>
+            )}
+            javaScriptEnabled
+            domStorageEnabled
+            originWhitelist={['*']}
+            cacheEnabled
+          />
+        )
       )}
     </View>
   );
@@ -195,83 +155,89 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+
   body: {
     flex: 1,
     flexDirection: 'row',
+    gap: 8,
   },
+
   sidebar: {
-    width: 280,
+    width: 115,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     borderRightWidth: 1,
-    borderRightColor: 'rgba(0,0,0,0.1)',
-    paddingVertical: 16,
+    borderColor: '#ddd',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    backgroundColor: '#fafafa',
+    elevation: 7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
-  sidebarTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-  },
+
   scrollContent: {
-    paddingBottom: 20,
+    paddingVertical: 6,
   },
+
   unitButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    marginBottom: 4,
-    borderRadius: 8,
-    marginHorizontal: 8,
+    paddingVertical: 9,
+    paddingHorizontal:1,
+    borderRadius: 14,
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
   unitText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
+
   webViewContainer: {
     flex: 1,
-    backgroundColor: '#525659',
-  },
-  webView: {
-    flex: 1,
-    borderWidth: 0,
-  },
-  fullscreenContainer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
-    backgroundColor: '#525659',
-  },
-  fullscreenWebView: {
-    flex: 1,
-    borderWidth: 0,
-  },
-  floatingButton: {
-    position: 'absolute',
-    zIndex: 1000,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    elevation: 5,
     shadowColor: '#000',
+    shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowRadius: 5,
   },
-  fullscreenButton: {
-    top: 16,
-    right: 16,
-  },
-  backButtonFullscreen: {
-    top: 16,
-    left: 16,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#525659',
+  },
+
+  floatingButton: {
+    position: 'absolute',
+    borderRadius: 28,
+    padding: 10,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    zIndex: 30,
+  },
+
+  backButtonFullscreen: {
+    top:12,
+    left: 0,
+    backgroundColor: 'gray',
+    padding: 8,
+  },
+
+  fullscreenButton: {
+    top: 12,
+    right: 12,
+    size:20,
+    backgroundColor: '#fff',
   },
 });

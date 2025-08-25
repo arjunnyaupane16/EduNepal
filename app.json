@@ -59,13 +59,16 @@
     "plugins": [
       "expo-router",
       "expo-build-properties",
-      ["expo-build-properties", {
-        "android": {
-          "compileSdkVersion": 34,
-          "targetSdkVersion": 34,
-          "buildToolsVersion": "34.0.0"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          }
         }
-      }],
+      ],
       "expo-notifications",
       [
         "expo-splash-screen",
@@ -75,7 +78,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
